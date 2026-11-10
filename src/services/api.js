@@ -87,15 +87,15 @@ export async function getAuthSetupStatus() {
   return res.json();
 }
 
-export async function registerUser(username, password) {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
+export async function setupOwner(username, password) {
+  const res = await fetch(`${BASE_URL}/auth/setup-owner`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
-    throw new Error(data.error || 'Registration failed');
+    throw new Error(data.error || 'Owner setup failed');
   }
   setAuthSession(data);
   return data;
@@ -117,6 +117,34 @@ export async function loginUser(username, password) {
 
 export async function getMe() {
   return apiFetch('/auth/me');
+}
+
+// ==========================================
+// Admin-Only User Management APIs
+// ==========================================
+
+export async function adminListUsers() {
+  return apiFetch('/admin/users');
+}
+
+export async function adminCreateUser(payload) {
+  return apiFetch('/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminUpdateUser(id, payload) {
+  return apiFetch(`/admin/users/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminDeleteUser(id) {
+  return apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
 }
 
 // Multi-Account Management APIs (Scoped to Logged-in User)

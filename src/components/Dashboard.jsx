@@ -9,6 +9,7 @@ import {
   logoutUser,
 } from '../services/api';
 import AuthScreen from './AuthScreen';
+import AdminUsersPanel from './AdminUsersPanel';
 import ConnectionSection from './ConnectionSection';
 import AutomationSettings from './AutomationSettings';
 import Mode2BulkSender from './Mode2BulkSender';
@@ -117,9 +118,13 @@ export default function Dashboard() {
             <span className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl">
               <span>👤</span>
               <span>{user.username}</span>
-              {user.role === 'admin' && (
+              {user.role === 'admin' ? (
                 <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-extrabold uppercase">
                   Admin
+                </span>
+              ) : (
+                <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-semibold">
+                  {user.expiresAt ? `⏱ Till ${new Date(user.expiresAt).toLocaleDateString()}` : '♾️ Unlimited'}
                 </span>
               )}
             </span>
@@ -200,25 +205,44 @@ export default function Dashboard() {
             <span>📢 Mode 3: Broadcast All</span>
             <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded">All WhatsApp Chats</span>
           </button>
+
+          {user.role === 'admin' && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`flex-1 py-3 px-4 rounded-lg font-bold text-xs transition flex items-center justify-center gap-2 ${
+                activeTab === 'admin'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/80'
+              }`}
+            >
+              <span>👑 Admin Panel</span>
+              <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded">Create Users</span>
+            </button>
+          )}
         </div>
 
-        {/* Main Content Grid (reloads automatically when account switches) */}
-        <div key={refreshKey} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: WhatsApp Connection + Active Mode Control */}
-          <div className="lg:col-span-5 space-y-6">
-            <ConnectionSection />
+        {/* Admin User Management View (Exclusive to Admin) */}
+        {activeTab === 'admin' && user.role === 'admin' ? (
+          <AdminUsersPanel />
+        ) : (
+          /* Main Content Grid (reloads automatically when account switches) */
+          <div key={refreshKey} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: WhatsApp Connection + Active Mode Control */}
+            <div className="lg:col-span-5 space-y-6">
+              <ConnectionSection />
 
-            {activeTab === 'mode1' && <AutomationSettings />}
-            {activeTab === 'mode2' && <Mode2BulkSender />}
-            {activeTab === 'mode3' && <Mode3Broadcast />}
-          </div>
+              {activeTab === 'mode1' && <AutomationSettings />}
+              {activeTab === 'mode2' && <Mode2BulkSender />}
+              {activeTab === 'mode3' && <Mode3Broadcast />}
+            </div>
 
-          {/* Right Column: Live Messages Inbox + Activity Logs */}
-          <div className="lg:col-span-7 space-y-6">
-            <MessagesList />
-            <ActivityLogs />
+            {/* Right Column: Live Messages Inbox + Activity Logs */}
+            <div className="lg:col-span-7 space-y-6">
+              <MessagesList />
+              <ActivityLogs />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

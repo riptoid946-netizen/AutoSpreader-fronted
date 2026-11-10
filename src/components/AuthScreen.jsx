@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getAuthSetupStatus, loginUser, registerUser } from '../services/api';
+import { getAuthSetupStatus, loginUser, setupOwner } from '../services/api';
 
 export default function AuthScreen({ onAuthenticated }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [needsOwnerSetup, setNeedsOwnerSetup] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -12,10 +11,7 @@ export default function AuthScreen({ onAuthenticated }) {
   useEffect(() => {
     getAuthSetupStatus()
       .then((res) => {
-        if (res?.needsOwnerSetup) {
-          setNeedsOwnerSetup(true);
-          setMode('register');
-        }
+        setNeedsOwnerSetup(Boolean(res?.needsOwnerSetup));
       })
       .catch(() => {});
   }, []);
@@ -25,10 +21,9 @@ export default function AuthScreen({ onAuthenticated }) {
     setError(null);
     setLoading(true);
     try {
-      const data =
-        mode === 'register'
-          ? await registerUser(username.trim(), password)
-          : await loginUser(username.trim(), password);
+      const data = needsOwnerSetup
+        ? await setupOwner(username.trim(), password)
+        : await loginUser(username.trim(), password);
       if (onAuthenticated) {
         onAuthenticated(data);
       }
@@ -46,45 +41,16 @@ export default function AuthScreen({ onAuthenticated }) {
           <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl mx-auto shadow-md">
             ⚡
           </div>
-          <h1 className="text-xl font-black text-slate-900">AutoSpreader WhatsApp</h1>
+          <h1 className="text-xl font-black text-slate-900">AutoSpreader Control Panel</h1>
           <p className="text-xs text-slate-500">
-            Har user ka apna alag private dashboard, QR link aur automation controls.
+            Authorized Access Only • Admin & Approved Users Login
           </p>
         </div>
 
         {needsOwnerSetup && (
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed">
-            <strong className="block mb-0.5">👑 First-Time Owner Setup:</strong>
-            Apna Admin Username & Password banayein — aapka pehle se connected WhatsApp account lock & claim ho jayega. Baaki users alag account banakar apna dashboard use kar payenge.
-          </div>
-        )}
-
-        {!needsOwnerSetup && (
-          <div className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-              }}
-              className={`py-2 rounded-lg text-xs font-bold transition ${
-                mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              🔐 Login
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setError(null);
-              }}
-              className={`py-2 rounded-lg text-xs font-bold transition ${
-                mode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              ✨ New User Account
-            </button>
+            <strong className="block mb-0.5">👑 First-Time Admin Setup:</strong>
+            Server par <code className="bg-amber-100 px-1 rounded">ADMIN_PASSWORD</code> env set nahi hai — apna Admin Username & Password abhi set karein (ya Railway Variables me <code className="bg-amber-100 px-1 rounded">ADMIN_USERNAME</code> / <code className="bg-amber-100 px-1 rounded">ADMIN_PASSWORD</code> add karein).
           </div>
         )}
 
@@ -103,7 +69,7 @@ export default function AuthScreen({ onAuthenticated }) {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. rahul_team"
+              placeholder={needsOwnerSetup ? 'e.g. admin' : 'Enter your username'}
               minLength={3}
               maxLength={32}
               required
@@ -120,7 +86,7 @@ export default function AuthScreen({ onAuthenticated }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 4 characters"
+              placeholder="Enter password"
               minLength={4}
               required
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:outline-none text-sm"
@@ -133,14 +99,18 @@ export default function AuthScreen({ onAuthenticated }) {
             className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold text-sm transition shadow-sm"
           >
             {loading
-              ? 'Please wait...'
+              ? 'Verifying...'
               : needsOwnerSetup
-              ? '👑 Create Owner Account & Enter'
-              : mode === 'register'
-              ? '🚀 Create My Private Dashboard'
-              : '🔓 Login to Dashboard'}
+              ? '👑 Setup Admin & Open Panel'
+              : '🔐 Sign In to Dashboard'}
           </button>
         </form>
+
+        {!needsOwnerSetup && (
+          <p className="text-[11px] text-center text-slate-400">
+            New account access? Contact Admin to generate your username & password.
+          </p>
+        )}
       </div>
     </div>
   );
