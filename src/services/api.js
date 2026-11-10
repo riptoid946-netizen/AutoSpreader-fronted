@@ -6,145 +6,218 @@ if (rawHost && !rawHost.startsWith('http://') && !rawHost.startsWith('https://')
 const API_HOST = rawHost;
 const BASE_URL = `${API_HOST}/api`;
 
+const TOKEN_KEY = 'wa_auth_token';
+const USER_KEY = 'wa_auth_user';
+const ACCOUNT_KEY = 'wa_active_account';
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function setAuthSession({ token, user, defaultAccountId }) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (defaultAccountId) localStorage.setItem(ACCOUNT_KEY, defaultAccountId);
+  window.dispatchEvent(new CustomEvent('wa-auth-changed', { detail: user }));
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(ACCOUNT_KEY);
+  window.dispatchEvent(new CustomEvent('wa-auth-changed', { detail: null }));
+}
+
+export function logoutUser() {
+  clearAuthSession();
+}
+
 export function getActiveAccountId() {
-  return localStorage.getItem('wa_active_account') || 'default';
+  return localStorage.getItem(ACCOUNT_KEY) || '';
 }
 
 export function setActiveAccountId(id) {
-  localStorage.setItem('wa_active_account', id);
+  localStorage.setItem(ACCOUNT_KEY, id);
   window.dispatchEvent(new CustomEvent('wa-account-changed', { detail: id }));
 }
 
 function getHeaders(customHeaders = {}) {
+  const token = getAuthToken();
+  const activeId = getActiveAccountId();
   return {
-    'x-account-id': getActiveAccountId(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(activeId ? { 'x-account-id': activeId } : {}),
     ...customHeaders,
   };
 }
 
-// Multi-Account Management APIs
-export async function getAccounts() {
-  const res = await fetch(`${BASE_URL}/accounts`, { headers: getHeaders() });
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: getHeaders(options.headers || {}),
+  });
+
+  if (res.status === 401) {
+    clearAuthSession();
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Request failed with status ${res.status}`);
+  }
+  return data;
+}
+
+// ==========================================
+// Authentication APIs
+// ==========================================
+
+export async function getAuthSetupStatus() {
+  const res = await fetch(`${BASE_URL}/auth/setup-status`);
   return res.json();
+}
+
+export async function registerUser(username, password) {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || 'Registration failed');
+  }
+  setAuthSession(data);
+  return data;
+}
+
+export async function loginUser(username, password) {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || 'Login failed');
+  }
+  setAuthSession(data);
+  return data;
+}
+
+export async function getMe() {
+  return apiFetch('/auth/me');
+}
+
+// Multi-Account Management APIs (Scoped to Logged-in User)
+export async function getAccounts() {
+  return apiFetch('/accounts');
 }
 
 export async function createAccount(name) {
-  const res = await fetch(`${BASE_URL}/accounts`, {
+  return apiFetch('/accounts', {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
-  return res.json();
 }
 
 export async function deleteAccount(id) {
-  const res = await fetch(`${BASE_URL}/accounts/${id}`, {
-    method: 'DELETE',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch(`/accounts/${id}`, { method: 'DELETE' });
 }
 
 export async function connectAccount(id) {
-  const res = await fetch(`${BASE_URL}/accounts/${id}/connect`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch(`/accounts/${id}/connect`, { method: 'POST' });
 }
 
 // Mode 1 Config APIs
 export async function getConfig() {
-  const res = await fetch(`${BASE_URL}/config`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch('/config');
 }
 
 export async function updateConfig(data) {
-  const res = await fetch(`${BASE_URL}/config`, {
+  return apiFetch('/config', {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return res.json();
 }
 
 export async function getStats() {
-  const res = await fetch(`${BASE_URL}/stats`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch('/stats');
 }
 
 export async function getLogs(limit = 50) {
-  const res = await fetch(`${BASE_URL}/logs?limit=${limit}`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch(`/logs?limit=${limit}`);
 }
 
 export async function getMessages(limit = 100) {
-  const res = await fetch(`${BASE_URL}/messages?limit=${limit}`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch(`/messages?limit=${limit}`);
 }
 
 export async function clearMessages() {
-  const res = await fetch(`${BASE_URL}/messages/clear`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch('/messages/clear', { method: 'POST' });
 }
 
 export async function getWhatsAppStatus() {
-  const res = await fetch(`${BASE_URL}/whatsapp/status`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch('/whatsapp/status');
 }
 
 export async function disconnectWhatsApp() {
-  const res = await fetch(`${BASE_URL}/whatsapp/disconnect`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch('/whatsapp/disconnect', { method: 'POST' });
 }
 
 export async function getWhatsAppChats(includeGroups = false, onlyUnread = false) {
-  const res = await fetch(
-    `${BASE_URL}/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}&onlyUnread=${onlyUnread ? 'true' : 'false'}`,
-    {
-      headers: getHeaders(),
-    }
+  return apiFetch(
+    `/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}&onlyUnread=${onlyUnread ? 'true' : 'false'}`
   );
-  return res.json();
 }
 
 export async function startAutomation() {
-  const res = await fetch(`${BASE_URL}/automation/start`, {
+  return apiFetch('/automation/start', {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
-  return res.json();
 }
 
 export async function stopAutomation() {
-  const res = await fetch(`${BASE_URL}/automation/stop`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch('/automation/stop', { method: 'POST' });
 }
 
 export async function getAutomationStatus() {
-  const res = await fetch(`${BASE_URL}/automation/status`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch('/automation/status');
 }
 
 export async function uploadMedia(file) {
   const formData = new FormData();
   formData.append('file', file);
 
+  const token = getAuthToken();
+  const activeId = getActiveAccountId();
   const res = await fetch(`${BASE_URL}/upload`, {
     method: 'POST',
-    headers: { 'x-account-id': getActiveAccountId() },
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeId ? { 'x-account-id': activeId } : {}),
+    },
     body: formData,
   });
+
+  if (res.status === 401) {
+    clearAuthSession();
+    throw new Error('Session expired. Please log in again.');
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -155,42 +228,25 @@ export async function uploadMedia(file) {
 }
 
 export async function startMode2(payload) {
-  const res = await fetch(`${BASE_URL}/mode2/start`, {
+  return apiFetch('/mode2/start', {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
-  const data = await res.json();
-  if (!res.ok || data.success === false) {
-    throw new Error(data.error || 'Failed to start Mode 2');
-  }
-  return data;
 }
 
 export async function startMode3(payload) {
-  const res = await fetch(`${BASE_URL}/mode3/start`, {
+  return apiFetch('/mode3/start', {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
-  const data = await res.json();
-  if (!res.ok || data.success === false) {
-    throw new Error(data.error || 'Failed to start Mode 3');
-  }
-  return data;
 }
 
 export async function getBulkStatus() {
-  const res = await fetch(`${BASE_URL}/bulk/status`, { headers: getHeaders() });
-  return res.json();
+  return apiFetch('/bulk/status');
 }
 
 export async function stopBulk() {
-  const res = await fetch(`${BASE_URL}/bulk/stop`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
-  return res.json();
+  return apiFetch('/bulk/stop', { method: 'POST' });
 }

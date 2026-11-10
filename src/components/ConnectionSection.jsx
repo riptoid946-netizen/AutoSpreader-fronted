@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { getWhatsAppStatus, disconnectWhatsApp } from '../services/api';
+import {
+  getWhatsAppStatus,
+  disconnectWhatsApp,
+  connectAccount,
+  getActiveAccountId,
+} from '../services/api';
 
 export default function ConnectionSection() {
-  const [status, setStatus] = useState({ connected: false, qrCode: null, clientInfo: null });
+  const [status, setStatus] = useState({ connected: false, initializing: false, qrCode: null, clientInfo: null });
   const [loading, setLoading] = useState(false);
-  const [pollInterval, setPollInterval] = useState(null);
 
   useEffect(() => {
     loadStatus();
     // Poll for QR code and connection status every 3 seconds
     const id = setInterval(loadStatus, 3000);
-    setPollInterval(id);
     return () => clearInterval(id);
   }, []);
 
@@ -19,7 +22,22 @@ export default function ConnectionSection() {
       const data = await getWhatsAppStatus();
       setStatus(data);
     } catch (err) {
-      console.error('Failed to load status:', err);
+      // handled gracefully
+    }
+  }
+
+  async function handleConnect() {
+    setLoading(true);
+    try {
+      const accId = status.accountId || getActiveAccountId();
+      if (accId) {
+        await connectAccount(accId);
+      }
+      await loadStatus();
+    } catch (err) {
+      alert('Connect failed: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -47,8 +65,14 @@ export default function ConnectionSection() {
         <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div>
             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Status</p>
-            <p className={`font-medium ${status.connected ? 'text-green-700' : status.qrCode ? 'text-amber-700' : 'text-slate-600'}`}>
-              {status.connected ? '✅ Connected' : status.qrCode ? '⏳ Waiting for scan' : '❌ Not Connected'}
+            <p className={`font-medium ${status.connected ? 'text-green-700' : status.qrCode ? 'text-amber-700' : status.initializing ? 'text-indigo-600' : 'text-slate-600'}`}>
+              {status.connected
+                ? '✅ Connected'
+                : status.qrCode
+                ? '⏳ Waiting for scan'
+                : status.initializing
+                ? '🔄 Starting browser & QR...'
+                : '❌ Not Connected'}
             </p>
           </div>
           {status.clientInfo?.phone && (
@@ -74,12 +98,27 @@ export default function ConnectionSection() {
                   Open WhatsApp on your phone → Linked Devices → Link a Device → Scan this QR
                 </p>
               </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-xs text-slate-400">Waiting for WhatsApp client to start...</p>
-                <p className="text-xs text-slate-400 italic mt-1">
-                  Make sure backend is running (port 3001).
+            ) : status.initializing ? (
+              <div className="text-center py-6 space-y-2">
+                <p className="text-xs font-semibold text-indigo-600 animate-pulse">
+                  ⏳ Launching WhatsApp session & generating QR code...
                 </p>
+                <p className="text-[11px] text-slate-400">
+                  Isme 10–15 seconds lag sakte hain.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-5 space-y-3">
+                <p className="text-xs text-slate-500">
+                  Click below to start WhatsApp and generate your private QR code.
+                </p>
+                <button
+                  onClick={handleConnect}
+                  disabled={loading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-2.5 rounded-lg font-bold text-xs transition shadow-sm"
+                >
+                  {loading ? 'Starting...' : '📲 Connect WhatsApp / Show QR Code'}
+                </button>
               </div>
             )}
             <button

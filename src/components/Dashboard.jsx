@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getStats, getActiveAccountId } from '../services/api';
+import {
+  getStats,
+  getActiveAccountId,
+  setActiveAccountId,
+  getAuthToken,
+  getStoredUser,
+  getMe,
+  logoutUser,
+} from '../services/api';
+import AuthScreen from './AuthScreen';
 import ConnectionSection from './ConnectionSection';
 import AutomationSettings from './AutomationSettings';
 import Mode2BulkSender from './Mode2BulkSender';
@@ -9,47 +18,121 @@ import ActivityLogs from './ActivityLogs';
 import AccountSwitcher from './AccountSwitcher';
 
 export default function Dashboard() {
+  const [user, setUser] = useState(() => (getAuthToken() ? getStoredUser() : null));
+  const [authChecked, setAuthChecked] = useState(!getAuthToken());
   const [activeTab, setActiveTab] = useState('mode1'); // 'mode1', 'mode2', 'mode3'
   const [stats, setStats] = useState({ totalReplied: 0, totalSuccessful: 0, totalFailed: 0, totalIncoming: 0 });
   const [activeAccount, setActiveAccount] = useState(getActiveAccountId());
   const [refreshKey, setRefreshKey] = useState(0);
 
+  useEffect(() => {
+    const onAuthChanged = (e) => {
+      setUser(e.detail);
+      setActiveAccount(getActiveAccountId());
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('wa-auth-changed', onAuthChanged);
+
+    if (getAuthToken()) {
+      getMe()
+        .then((res) => {
+          setUser(res.user);
+          if (res.accounts?.length > 0) {
+            const current = getActiveAccountId();
+            const stillOwned = res.accounts.some((a) => a.id === current);
+            if (!stillOwned) {
+              setActiveAccountId(res.accounts[0].id);
+              setActiveAccount(res.accounts[0].id);
+            }
+          }
+        })
+        .catch(() => {
+          setUser(null);
+        })
+        .finally(() => setAuthChecked(true));
+    } else {
+      setAuthChecked(true);
+    }
+
+    return () => window.removeEventListener('wa-auth-changed', onAuthChanged);
+  }, []);
+
   const fetchStats = async () => {
+    if (!user) return;
     try {
       const data = await getStats();
       setStats(data);
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      // handled gracefully
     }
   };
 
   useEffect(() => {
+    if (!user) return;
     fetchStats();
     const interval = setInterval(fetchStats, 4000);
     return () => clearInterval(interval);
-  }, [activeAccount]);
+  }, [activeAccount, user]);
 
   const handleAccountChange = (id) => {
     setActiveAccount(id);
     setRefreshKey((k) => k + 1);
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-500">
+        Loading workspace...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        onAuthenticated={(data) => {
+          setUser(data.user);
+          setActiveAccount(data.defaultAccountId || getActiveAccountId());
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100/70 p-4 sm:p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header with Account Switcher */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        {/* Header with User Info, Account Switcher & Logout */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
               <span>⚡ WhatsApp Multi-User Automation</span>
             </h1>
             <p className="text-slate-500 text-xs mt-0.5">
-              Multi-Account • Auto-Reply • Targeted Bulk • Contact Broadcast • Media & Voice Notes
+              Private Workspace • Auto-Reply • Targeted Bulk • Contact Broadcast • Media & Voice Notes
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl">
+              <span>👤</span>
+              <span>{user.username}</span>
+              {user.role === 'admin' && (
+                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                  Admin
+                </span>
+              )}
+            </span>
+
             <AccountSwitcher onAccountChange={handleAccountChange} />
+
+            <button
+              onClick={logoutUser}
+              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm"
+              title="Logout from this dashboard"
+            >
+              🚪 Logout
+            </button>
           </div>
         </header>
 

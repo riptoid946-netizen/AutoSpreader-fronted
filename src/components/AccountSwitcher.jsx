@@ -25,6 +25,9 @@ export default function AccountSwitcher({ onAccountChange }) {
       const data = await getAccounts();
       if (data && Array.isArray(data.accounts)) {
         setAccounts(data.accounts);
+        if (data.accounts.length > 0 && !data.accounts.some((a) => a.id === activeId)) {
+          handleSwitch(data.accounts[0].id);
+        }
       }
     } catch (err) {
       // ignore poll error
@@ -59,16 +62,18 @@ export default function AccountSwitcher({ onAccountChange }) {
   }
 
   async function handleDelete(id, name) {
-    if (id === 'default') {
-      alert('Primary default account cannot be deleted.');
+    if (accounts.length <= 1) {
+      alert('Your last remaining WhatsApp workspace cannot be deleted.');
       return;
     }
     if (window.confirm(`Are you sure you want to remove "${name}"? Its session and history will be cleared.`)) {
       try {
         await deleteAccount(id);
-        await loadAccounts();
-        if (activeId === id) {
-          handleSwitch('default');
+        const data = await getAccounts();
+        const updatedList = data?.accounts || [];
+        setAccounts(updatedList);
+        if (activeId === id && updatedList.length > 0) {
+          handleSwitch(updatedList[0].id);
         }
       } catch (err) {
         alert('Failed to delete: ' + err.message);
@@ -76,8 +81,8 @@ export default function AccountSwitcher({ onAccountChange }) {
     }
   }
 
-  const activeAccount = accounts.find((a) => a.id === activeId) || {
-    id: 'default',
+  const activeAccount = accounts.find((a) => a.id === activeId) || accounts[0] || {
+    id: activeId,
     name: 'My WhatsApp',
     isReady: false,
   };
@@ -108,7 +113,7 @@ export default function AccountSwitcher({ onAccountChange }) {
             ))}
           </select>
 
-          {activeId !== 'default' && (
+          {accounts.length > 1 && (
             <button
               onClick={() => handleDelete(activeId, activeAccount.name)}
               className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 transition"
