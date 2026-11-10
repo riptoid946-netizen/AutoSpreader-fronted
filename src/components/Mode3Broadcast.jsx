@@ -8,8 +8,9 @@ export default function Mode3Broadcast() {
   const [fileName, setFileName] = useState(null);
   const [voicePath, setVoicePath] = useState(null);
   const [voiceName, setVoiceName] = useState(null);
-  const [delaySeconds, setDelaySeconds] = useState(8);
+  const [delaySeconds, setDelaySeconds] = useState(12);
   const [includeGroups, setIncludeGroups] = useState(false);
+  const [onlyUnread, setOnlyUnread] = useState(false);
 
   const [chatsCount, setChatsCount] = useState(null);
   const [loadingChats, setLoadingChats] = useState(false);
@@ -22,12 +23,12 @@ export default function Mode3Broadcast() {
     checkStatus();
     const interval = setInterval(checkStatus, 2500);
     return () => clearInterval(interval);
-  }, [includeGroups]);
+  }, [includeGroups, onlyUnread]);
 
   async function fetchChats() {
     setLoadingChats(true);
     try {
-      const res = await getWhatsAppChats(includeGroups);
+      const res = await getWhatsAppChats(includeGroups, onlyUnread);
       setChatsCount(res.count ?? 0);
     } catch (err) {
       console.error('Failed to fetch chats:', err);
@@ -75,6 +76,7 @@ export default function Mode3Broadcast() {
         voiceName,
         delaySeconds,
         includeGroups,
+        onlyUnread,
       });
       await checkStatus();
     } catch (err) {
@@ -175,7 +177,17 @@ export default function Mode3Broadcast() {
               {loadingChats ? 'Scanning chats...' : `${chatsCount ?? 0} active contacts found in your WhatsApp`}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={onlyUnread}
+                onChange={(e) => setOnlyUnread(e.target.checked)}
+                disabled={isCurrentMode3Running}
+                className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500"
+              />
+              <span>Only Unread / Pending</span>
+            </label>
             <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
               <input
                 type="checkbox"
@@ -232,13 +244,15 @@ export default function Mode3Broadcast() {
           </label>
           <input
             type="number"
-            min="3"
+            min="8"
             value={delaySeconds}
-            onChange={(e) => setDelaySeconds(Math.max(3, parseInt(e.target.value) || 3))}
+            onChange={(e) => setDelaySeconds(Math.max(8, parseInt(e.target.value) || 8))}
             disabled={isCurrentMode3Running}
             className="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-slate-300 focus:border-purple-500 focus:outline-none text-xs"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">Recommended: 8–15 seconds per contact for safe broadcasting.</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            🛡️ Strictly 1-by-1 sending (+0–6s random jitter aur har 10 chats par 25–40s anti-ban pause). Min: 8s.
+          </p>
         </div>
 
         <div className="pt-2 flex gap-3">
@@ -247,7 +261,11 @@ export default function Mode3Broadcast() {
             disabled={loading || isCurrentMode3Running || chatsCount === 0}
             className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:text-slate-500 text-white py-2.5 rounded-lg font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
           >
-            {loading ? 'Starting...' : isCurrentMode3Running ? 'Broadcast Active' : `📢 Start Broadcast to All (${chatsCount ?? 0} chats)`}
+            {loading
+              ? 'Starting...'
+              : isCurrentMode3Running
+              ? 'Broadcast Active'
+              : `📢 Start ${onlyUnread ? 'Unread' : 'All'} Broadcast (${chatsCount ?? 0} chats)`}
           </button>
 
           {isCurrentMode3Running && (

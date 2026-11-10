@@ -9,7 +9,7 @@ export default function Mode2BulkSender() {
   const [fileName, setFileName] = useState(null);
   const [voicePath, setVoicePath] = useState(null);
   const [voiceName, setVoiceName] = useState(null);
-  const [delaySeconds, setDelaySeconds] = useState(6);
+  const [delaySeconds, setDelaySeconds] = useState(10);
 
   const [bulkStatus, setBulkStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -209,17 +209,19 @@ export default function Mode2BulkSender() {
 
         <div>
           <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Delay between numbers (seconds)
+            Anti-Ban Delay between numbers (seconds)
           </label>
           <input
             type="number"
-            min="2"
+            min="8"
             value={delaySeconds}
-            onChange={(e) => setDelaySeconds(Math.max(2, parseInt(e.target.value) || 2))}
+            onChange={(e) => setDelaySeconds(Math.max(8, parseInt(e.target.value) || 8))}
             disabled={isCurrentMode2Running}
             className="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">Recommended: 5–10 seconds per number to avoid spam detection.</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            🛡️ Strictly 1-by-1 sending (+0–6s random jitter aur har 10 numbers par 25–40s breather pause). Min: 8s.
+          </p>
         </div>
 
         <div className="pt-2 flex gap-3">

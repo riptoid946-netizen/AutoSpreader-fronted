@@ -93,6 +93,7 @@ export default function AutomationSettings() {
     try {
       await startAutomation();
       setRunning(true);
+      setConfig((prev) => ({ ...prev, mode1_enabled: 1 }));
     } catch (err) {
       alert('Start failed: ' + err.message);
     } finally {
@@ -129,9 +130,9 @@ export default function AutomationSettings() {
       </p>
 
       <div className="flex items-start gap-2 p-2.5 mb-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-[11px] leading-relaxed">
-        <span className="text-sm">✨</span>
+        <span className="text-sm">🛡️</span>
         <span>
-          <strong>Realistic Human Simulation Active:</strong> WhatsApp par blue tick (seen), real typing indicator ("typing..."), file picker delay, aur voice note bhejte waqt real mic animation ("recording audio...") dikhayega.
+          <strong>Unread Catch-Up + Anti-Ban Active:</strong> Mode Start karte hi pehle se aaye hue sabhi <b>unread/pending</b> messages ko 1-by-1 safe delay gap se reply karega + real typing, seen aur voice recording animation dikhayega.
         </span>
       </div>
 

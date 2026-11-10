@@ -104,10 +104,13 @@ export async function disconnectWhatsApp() {
   return res.json();
 }
 
-export async function getWhatsAppChats(includeGroups = false) {
-  const res = await fetch(`${BASE_URL}/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}`, {
-    headers: getHeaders(),
-  });
+export async function getWhatsAppChats(includeGroups = false, onlyUnread = false) {
+  const res = await fetch(
+    `${BASE_URL}/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}&onlyUnread=${onlyUnread ? 'true' : 'false'}`,
+    {
+      headers: getHeaders(),
+    }
+  );
   return res.json();
 }
 
