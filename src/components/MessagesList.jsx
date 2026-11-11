@@ -52,29 +52,23 @@ export default function MessagesList() {
   const outgoingCount = messages.filter((m) => m.direction === 'outgoing').length;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+    <section className="panel" aria-labelledby="messages-heading">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <span className="w-6 h-6 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">💬</span>
-            Saved Messages & Inquiries
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h2 id="messages-heading" className="panel-title">Saved Messages &amp; Inquiries</h2>
+          <p className="mt-1 text-xs text-zinc-400">
             Real-time log of every message received from users and auto-replies sent.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium border border-emerald-200">
-            {incomingCount} Received
-          </span>
-          <span className="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium border border-indigo-200">
-            {outgoingCount} Replied
-          </span>
+          <span className="chip chip-success">{incomingCount} received</span>
+          <span className="chip chip-idle">{outgoingCount} replied</span>
           {messages.length > 0 && (
             <button
               onClick={handleClear}
-              className="text-xs text-slate-400 hover:text-red-600 px-2 py-1 rounded hover:bg-slate-100 transition"
+              aria-label="Clear message logs"
+              className="rounded-md px-2 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
               title="Clear message logs"
             >
               Clear
@@ -83,35 +77,41 @@ export default function MessagesList() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row gap-2">
         <input
           type="text"
-          placeholder="Search by phone, name or text..."
+          placeholder="Search by phone, name or text…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+          className="field-sm flex-1"
         />
-        <div className="flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
+        <div className="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1 text-xs overflow-x-auto">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1 rounded-md font-medium transition ${
-              filter === 'all' ? 'bg-white shadow-sm text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700'
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              filter === 'all'
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             All ({messages.length})
           </button>
           <button
             onClick={() => setFilter('incoming')}
-            className={`px-3 py-1 rounded-md font-medium transition ${
-              filter === 'incoming' ? 'bg-white shadow-sm text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-700'
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              filter === 'incoming'
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             Users ({incomingCount})
           </button>
           <button
             onClick={() => setFilter('outgoing')}
-            className={`px-3 py-1 rounded-md font-medium transition ${
-              filter === 'outgoing' ? 'bg-white shadow-sm text-indigo-700 font-bold' : 'text-slate-500 hover:text-slate-700'
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              filter === 'outgoing'
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             Auto Replies ({outgoingCount})
@@ -120,40 +120,44 @@ export default function MessagesList() {
       </div>
 
       {loading ? (
-        <p className="text-slate-400 text-xs italic py-4">Loading messages...</p>
+        <div className="space-y-2.5 py-1">
+          <div className="skeleton h-16 w-full" />
+          <div className="skeleton h-16 w-5/6" />
+          <div className="skeleton h-16 w-4/6" />
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg">
-          <p className="text-slate-400 text-xs">
+        <div className="rounded-lg border border-dashed border-zinc-800 py-10 text-center">
+          <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
             {messages.length === 0
               ? 'No messages yet. When a user sends a message on WhatsApp, it will be saved and displayed here automatically.'
               : 'No matching messages found for current filter.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+        <div className="max-h-[380px] -mr-2.5 space-y-2.5 overflow-y-auto [scrollbar-gutter:stable]">
           {filtered.map((msg) => {
             const isIncoming = msg.direction === 'incoming';
             return (
               <div
                 key={msg.id}
-                className={`p-3 rounded-lg border text-xs transition ${
+                className={`rounded-lg border p-3 text-xs ${
                   isIncoming
-                    ? 'bg-slate-50 border-slate-200'
-                    : 'bg-indigo-50/50 border-indigo-100 ml-4'
+                    ? 'border-zinc-800 bg-zinc-950/60'
+                    : 'border-emerald-600/30 bg-emerald-600/10'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                         isIncoming
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-indigo-100 text-indigo-800'
+                          ? 'bg-zinc-800 text-zinc-400'
+                          : 'bg-emerald-600/20 text-emerald-400'
                       }`}
                     >
                       {isIncoming ? 'User Message' : 'Outbound Reply'}
                     </span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="truncate font-medium text-zinc-200">
                       {isIncoming
                         ? msg.sender_name && msg.sender_name !== msg.phone_number
                           ? `${msg.sender_name} (+${msg.phone_number})`
@@ -161,23 +165,23 @@ export default function MessagesList() {
                         : `To: +${msg.phone_number}`}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span className="shrink-0 text-[11px] text-zinc-400 font-mono">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
-                <p className="text-slate-700 whitespace-pre-wrap break-words pl-1 mt-1 leading-relaxed">
+                <p className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-zinc-300">
                   {msg.message_text}
                 </p>
                 {(msg.file_name || msg.has_file || msg.has_voice) && (
-                  <div className="flex items-center gap-2 mt-2 pt-1 border-t border-slate-200/60">
+                  <div className="mt-2 flex items-center gap-2 border-t border-zinc-800 pt-2">
                     {(msg.file_name || msg.has_file) && (
-                      <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-mono border border-emerald-200">
-                        📦 File: {msg.file_name || 'Attached File'}
+                      <span className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400 font-mono">
+                        File: {msg.file_name || 'Attached File'}
                       </span>
                     )}
                     {Boolean(msg.has_voice) && (
-                      <span className="inline-flex items-center gap-1 text-[11px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-mono border border-purple-200">
-                        🎙️ Voice Note Sent
+                      <span className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400">
+                        Voice note sent
                       </span>
                     )}
                   </div>
@@ -187,7 +191,6 @@ export default function MessagesList() {
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 }
-

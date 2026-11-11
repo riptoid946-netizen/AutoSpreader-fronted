@@ -54,29 +54,46 @@ export default function ConnectionSection() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-        <span className="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">🔗</span>
-        WhatsApp Connection
-      </h2>
+    <section className="panel" aria-labelledby="connection-heading">
+      <h2 id="connection-heading" className="panel-title mb-4">WhatsApp Connection</h2>
 
       <div className="space-y-4">
-        {/* Status badge */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+        {/* Status row */}
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3.5 py-3">
           <div>
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Status</p>
-            <p className={`font-medium ${status.connected ? 'text-green-700' : status.qrCode ? 'text-amber-700' : status.initializing ? 'text-indigo-600' : 'text-slate-600'}`}>
-              {status.connected
-                ? '✅ Connected'
-                : status.qrCode
-                ? '⏳ Waiting for scan'
-                : status.initializing
-                ? '🔄 Starting browser & QR...'
-                : '❌ Not Connected'}
+            <p className="text-[11px] font-medium text-zinc-400">Status</p>
+            <p
+              className={`mt-0.5 flex items-center gap-2 text-sm font-medium ${
+                status.connected
+                  ? 'text-emerald-400'
+                  : status.qrCode
+                  ? 'text-amber-400'
+                  : status.initializing
+                  ? 'text-zinc-300'
+                  : 'text-zinc-400'
+              }`}
+            >
+              {status.connected ? (
+                <>
+                  <span className="status-dot bg-emerald-500 animate-pulse" /> Connected
+                </>
+              ) : status.qrCode ? (
+                <>
+                  <span className="status-dot bg-amber-500" /> Waiting for scan
+                </>
+              ) : status.initializing ? (
+                <>
+                  <span className="status-dot bg-zinc-500 animate-pulse" /> Starting browser &amp; QR…
+                </>
+              ) : (
+                <>
+                  <span className="status-dot bg-zinc-600" /> Not connected
+                </>
+              )}
             </p>
           </div>
           {status.clientInfo?.phone && (
-            <span className="text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
+            <span className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] font-medium text-zinc-400 font-mono">
               {status.clientInfo.phone}
             </span>
           )}
@@ -85,67 +102,68 @@ export default function ConnectionSection() {
         {!status.connected ? (
           <div className="space-y-3">
             {status.qrCode ? (
-              <div className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50">
-                <p className="text-xs text-indigo-600 font-medium uppercase tracking-wider">
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
+                <p className="text-[11px] font-medium text-zinc-400">
                   Scan this QR with WhatsApp
                 </p>
-                <img
-                  src={status.qrCode}
-                  alt="WhatsApp QR Code"
-                  className="w-48 h-48 bg-white rounded p-1 shadow-sm"
-                />
-                <p className="text-xs text-slate-500 text-center max-w-xs">
+                <div className="mt-3 inline-block rounded-lg border border-zinc-700 bg-white p-2">
+                  <img
+                    src={status.qrCode}
+                    alt="WhatsApp QR Code"
+                    className="w-48 h-48 rounded"
+                  />
+                </div>
+                <p className="mt-3 text-[11px] text-zinc-400 leading-relaxed">
                   Open WhatsApp on your phone → Linked Devices → Link a Device → Scan this QR
                 </p>
               </div>
             ) : status.initializing ? (
-              <div className="text-center py-6 space-y-2">
-                <p className="text-xs font-semibold text-indigo-600 animate-pulse">
-                  ⏳ Launching WhatsApp session & generating QR code...
+              <div className="flex flex-col items-center gap-3 py-6">
+                <span className="spinner" />
+                <p className="text-xs font-medium text-zinc-400">
+                  Launching WhatsApp session &amp; generating QR code…
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-zinc-400">
                   Isme 10–15 seconds lag sakte hain.
                 </p>
               </div>
             ) : (
-              <div className="text-center py-5 space-y-3">
-                <p className="text-xs text-slate-500">
+              <div className="space-y-3 py-1">
+                <p className="text-xs text-zinc-400">
                   Click below to start WhatsApp and generate your private QR code.
                 </p>
-                <button
-                  onClick={handleConnect}
-                  disabled={loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-2.5 rounded-lg font-bold text-xs transition shadow-sm"
-                >
-                  {loading ? 'Starting...' : '📲 Connect WhatsApp / Show QR Code'}
+                <button onClick={handleConnect} disabled={loading} className="btn-primary w-full">
+                  {loading ? 'Starting…' : 'Connect WhatsApp / Show QR Code'}
                 </button>
               </div>
             )}
             <button
               onClick={handleDisconnect}
               disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white py-2 rounded font-medium text-sm transition"
+              className="btn-danger-outline w-full"
             >
-              {loading ? 'Disconnecting...' : 'Disconnect / Reset'}
+              {loading ? 'Disconnecting…' : 'Disconnect / Reset'}
             </button>
           </div>
         ) : (
-          <div className="text-center py-4">
-            <p className="text-xs text-green-700 font-medium">✅ WhatsApp is linked and ready</p>
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 text-xs font-medium text-emerald-400">
+              <span className="status-dot bg-emerald-500" /> WhatsApp is linked and ready
+            </p>
             <button
               onClick={handleDisconnect}
               disabled={loading}
-              className="w-full mt-3 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white py-2 rounded font-medium text-sm transition"
+              className="btn-danger-outline w-full"
             >
-              {loading ? 'Disconnecting...' : 'Disconnect'}
+              {loading ? 'Disconnecting…' : 'Disconnect'}
             </button>
           </div>
         )}
       </div>
 
-      <p className="mt-3 text-xs text-slate-400 italic">
+      <p className="mt-4 border-t border-zinc-800 pt-3 text-[11px] text-zinc-400">
         Personal WhatsApp via local session. Use delays to avoid getting banned.
       </p>
-    </div>
+    </section>
   );
 }

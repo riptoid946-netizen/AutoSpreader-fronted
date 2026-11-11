@@ -114,38 +114,28 @@ export default function AutomationSettings() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <span className="w-6 h-6 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">1</span>
+    <section className="panel" aria-labelledby="mode1-heading">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 id="mode1-heading" className="panel-title flex items-center gap-2">
+          <span className="num-chip">1</span>
           Mode 1: Same Message Auto-Reply
         </h2>
-        <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${running ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-          {running ? '● Running' : '○ Inactive'}
-        </span>
-      </div>
-
-      <p className="text-xs text-slate-500 mb-3">
-        Whenever a contact messages you on WhatsApp, send this text reply + separate optional APK/File + separate optional Voice Note.
-      </p>
-
-      <div className="flex items-start gap-2 p-2.5 mb-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-[11px] leading-relaxed">
-        <span className="text-sm">🛡️</span>
-        <span>
-          <strong>Unread Catch-Up + Anti-Ban Active:</strong> Mode Start karte hi pehle se aaye hue sabhi <b>unread/pending</b> messages ko 1-by-1 safe delay gap se reply karega + real typing, seen aur voice recording animation dikhayega.
+        <span className={`chip ${running ? 'chip-success' : 'chip-idle'}`}>
+          <span className={`status-dot ${running ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-500'}`} />
+          {running ? 'Running' : 'Inactive'}
         </span>
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
-        <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+        <div className="panel-soft space-y-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={config.mode1_enabled === 1}
               onChange={(e) => setConfig({ ...config, mode1_enabled: e.target.checked ? 1 : 0 })}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
             />
-            <span className="text-xs font-semibold text-slate-700">Enable Mode 1 Auto-Reply</span>
+            <span className="text-xs font-medium text-zinc-300">Enable Mode 1 Auto-Reply</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
@@ -153,21 +143,19 @@ export default function AutomationSettings() {
               type="checkbox"
               checked={config.reply_once_per_contact === 1}
               onChange={(e) => setConfig({ ...config, reply_once_per_contact: e.target.checked ? 1 : 0 })}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
             />
-            <span className="text-xs text-slate-600">Reply only once per user (prevents duplicate spam & bans)</span>
+            <span className="text-xs text-zinc-400">Reply only once per user (prevents duplicate spam &amp; bans)</span>
           </label>
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Automated Reply Text Message
-          </label>
+          <label className="label">Automated reply text message</label>
           <textarea
             value={config.automated_message}
             onChange={(e) => setConfig({ ...config, automated_message: e.target.value })}
             rows={3}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs leading-relaxed"
+            className="field-sm leading-relaxed"
             placeholder="Type your auto-reply text message here..."
           />
         </div>
@@ -183,30 +171,28 @@ export default function AutomationSettings() {
         />
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Delay before reply (seconds)
-          </label>
+          <label className="label">Delay before reply (seconds)</label>
           <input
             type="number"
             min="0"
             value={config.reply_delay_seconds}
             onChange={(e) => setConfig({ ...config, reply_delay_seconds: Math.max(0, parseInt(e.target.value) || 0) })}
-            className="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs"
+            className="field-sm sm:w-48"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">Recommended: 5–15 seconds to look natural.</p>
+          <p className="hint">Recommended: 5–15 seconds to look natural.</p>
         </div>
 
-        <div className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50/70">
+        <div className="flex items-start gap-2.5 panel-soft">
           <input
             id="reply_once"
             type="checkbox"
             checked={Boolean(config.reply_once_per_contact)}
             onChange={(e) => setConfig({ ...config, reply_once_per_contact: e.target.checked ? 1 : 0 })}
-            className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-950 cursor-pointer"
           />
-          <label htmlFor="reply_once" className="text-xs text-slate-700 cursor-pointer select-none">
-            <span className="font-semibold block text-slate-900">Reply only once per contact (Ek contact ko sirf ek baar reply kare)</span>
-            <span className="text-[11px] text-slate-500 block mt-0.5">
+          <label htmlFor="reply_once" className="text-xs text-zinc-400 cursor-pointer select-none">
+            <span className="font-medium block text-zinc-200">Reply only once per contact (Ek contact ko sirf ek baar reply kare)</span>
+            <span className="text-[11px] text-zinc-400 block mt-0.5 leading-relaxed">
               Agar uncheck rakhoge, to koi bhi dost ya user jab bhi message karega use auto-reply milega (har baar).
             </span>
           </label>
@@ -215,39 +201,31 @@ export default function AutomationSettings() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-2 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+          className="btn-primary w-full"
         >
-          {loading ? 'Saving...' : '💾 Save Mode 1 Settings'}
+          {loading ? 'Saving…' : 'Save Mode 1 Settings'}
         </button>
-        {saved && <p className="text-xs text-green-600 text-center font-medium">✅ Settings saved successfully</p>}
+        {saved && <p className="text-xs text-emerald-500 text-center font-medium">Settings saved successfully</p>}
       </form>
 
-      <div className="mt-5 pt-4 border-t border-slate-200">
-        <div className="flex gap-2">
+      <div className="mt-5 border-t border-zinc-800 pt-4">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={handleStart}
             disabled={loading || running}
-            className={`flex-1 py-2 rounded-lg font-semibold text-xs transition ${
-              running
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-            }`}
+            className={`sm:flex-1 ${running ? 'btn-disabled' : 'btn-primary'}`}
           >
-            {loading ? 'Starting...' : '▶ START Auto-Reply'}
+            {loading ? 'Starting…' : 'Start Auto-Reply'}
           </button>
           <button
             onClick={handleStop}
             disabled={loading || !running}
-            className={`flex-1 py-2 rounded-lg font-semibold text-xs transition ${
-              !running
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                : 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
-            }`}
+            className={`sm:flex-1 ${!running ? 'btn-disabled' : 'btn-danger'}`}
           >
-            {loading ? 'Stopping...' : '⏹ STOP Auto-Reply'}
+            {loading ? 'Stopping…' : 'Stop Auto-Reply'}
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

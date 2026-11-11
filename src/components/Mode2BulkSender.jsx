@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { startMode2, stopBulk, getBulkStatus } from '../services/api';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 
@@ -14,6 +14,10 @@ export default function Mode2BulkSender() {
   const [bulkStatus, setBulkStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [startedInfo, setStartedInfo] = useState(null);
+  // Synchronous guard: blocks a second submit before React re-renders the disabled button
+  const submittingRef = useRef(false);
+  const infoTimerRef = useRef(null);
 
   useEffect(() => {
     checkStatus();
@@ -30,11 +34,11 @@ export default function Mode2BulkSender() {
     }
   }
 
-  // Count valid numbers in textarea
+  // Count valid numbers in textarea (mirrors backend parseAndCleanNumbers rules)
   const parsedNumbers = numbersText
     .split(/[\r\n,;]+/)
-    .map((n) => n.trim().replace(/[^0-9]/g, ''))
-    .filter((n) => n.length >= 10);
+    .map((n) => n.trim().replace(/[^0-9]/g, '').replace(/^0+/, ''))
+    .filter((n) => n.length >= 10 && n.length <= 15);
   const uniqueCount = new Set(parsedNumbers).size;
 
   const isCurrentMode2Running = bulkStatus?.running && bulkStatus?.mode === 'mode2';
@@ -42,6 +46,9 @@ export default function Mode2BulkSender() {
   async function handleStart(e) {
     e.preventDefault();
     setError(null);
+
+    // Hard double-submit guard (covers the gap before the button visually disables)
+    if (submittingRef.current) return;
 
     if (uniqueCount === 0) {
       setError('Please enter at least one valid phone number (10+ digits).');
@@ -52,9 +59,10 @@ export default function Mode2BulkSender() {
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
-      await startMode2({
+      const result = await startMode2({
         numbers: numbersText,
         message: messageText,
         filePath,
@@ -63,13 +71,32 @@ export default function Mode2BulkSender() {
         voiceName,
         delaySeconds,
       });
+      showInfo(
+        result.duplicate
+          ? `Already started — duplicate click ignored (campaign #${result.campaignId} is running).`
+          : `🚀 Campaign #${result.campaignId} started to ${result.total} contact${result.total === 1 ? '' : 's'}. Sending 1-by-1 — progress shows below.`
+      );
       await checkStatus();
     } catch (err) {
       setError(err.message);
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }
+
+  function showInfo(text) {
+    setStartedInfo(text);
+    if (infoTimerRef.current) clearTimeout(infoTimerRef.current);
+    infoTimerRef.current = setTimeout(() => setStartedInfo(null), 8000);
+  }
+
+  // Clear pending timer when the component unmounts (account/tab switch)
+  useEffect(() => {
+    return () => {
+      if (infoTimerRef.current) clearTimeout(infoTimerRef.current);
+    };
+  }, []);
 
   async function handleStop() {
     try {
@@ -81,64 +108,60 @@ export default function Mode2BulkSender() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
-          Mode 2: Targeted Bulk Sender (Custom Numbers)
+    <section className="panel" aria-labelledby="mode2-heading">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 id="mode2-heading" className="panel-title flex items-center gap-2">
+          <span className="num-chip">2</span>
+          Mode 2: Targeted Bulk Sender
         </h2>
         {isCurrentMode2Running && (
-          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 animate-pulse">
-            ● Sending Bulk Messages...
+          <span className="chip chip-info">
+            <span className="status-dot bg-sky-500 animate-pulse" /> Sending…
           </span>
         )}
       </div>
 
-      <p className="text-xs text-slate-500 mb-3">
-        Send custom text, separate APK/File, and separate Voice Note to a list of specified phone numbers with automatic anti-ban delay.
-      </p>
-
-      <div className="flex items-start gap-2 p-2.5 mb-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed">
-        <span className="text-sm">✨</span>
-        <span>
-          <strong>Realistic Human Simulation Active:</strong> WhatsApp par blue tick (seen), real typing indicator ("typing..."), file picker delay, aur voice note bhejte waqt real mic animation ("recording audio...") dikhayega.
-        </span>
-      </div>
+      {/* Success confirmation — so you KNOW it started & don't click again */}
+      {startedInfo && (
+        <div className="mb-4 rounded-lg border border-emerald-700/50 bg-emerald-700/10 px-3.5 py-2.5 text-xs font-medium text-emerald-300" role="status">
+          {startedInfo}
+        </div>
+      )}
 
       {/* Live Bulk Progress Card */}
       {bulkStatus?.mode === 'mode2' && (bulkStatus.running || bulkStatus.current > 0) && (
-        <div className="mb-5 p-4 rounded-xl border border-blue-200 bg-blue-50/60 shadow-sm">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-bold text-blue-900">
-              Bulk Campaign Progress: {bulkStatus.current} / {bulkStatus.total} ({bulkStatus.progressPercentage}%)
+        <div className="mb-5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3.5">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-zinc-200">
+              Campaign progress: {bulkStatus.current} / {bulkStatus.total} ({bulkStatus.progressPercentage}%)
             </span>
-            <span className="text-xs font-mono font-bold text-blue-700">
-              ✅ {bulkStatus.sent} Sent • ❌ {bulkStatus.failed} Failed
+            <span className="text-[11px] font-medium text-zinc-400">
+              {bulkStatus.sent} sent · {bulkStatus.failed} failed
             </span>
           </div>
 
-          <div className="w-full bg-blue-200/70 rounded-full h-2.5 mb-2 overflow-hidden">
+          <div className="progress-track mb-2">
             <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+              className="h-2 rounded-full bg-sky-500 transition-all duration-300"
               style={{ width: `${bulkStatus.progressPercentage}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-600">
+          <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-400">
             <span>
               {bulkStatus.running
                 ? `Sending to: +${bulkStatus.currentRecipient || '...'}`
                 : bulkStatus.completed
-                ? '🏁 Campaign Finished'
-                : '⏹ Campaign Stopped'}
+                ? 'Campaign finished'
+                : 'Campaign stopped'}
             </span>
             {bulkStatus.running && (
               <button
                 type="button"
                 onClick={handleStop}
-                className="text-[11px] bg-red-600 hover:bg-red-700 text-white px-2.5 py-0.5 rounded font-bold transition shadow-sm"
+                className="rounded-md border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-red-600/60 hover:bg-red-600/10 hover:text-red-400"
               >
-                Stop Sending
+                Stop sending
               </button>
             )}
           </div>
@@ -146,47 +169,41 @@ export default function Mode2BulkSender() {
       )}
 
       {error && (
-        <div className="mb-4 p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-          ⚠️ {error}
+        <div className="banner banner-rose mb-4">
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
       <form onSubmit={handleStart} className="space-y-4">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-slate-500 uppercase font-bold tracking-wide">
-              Phone Numbers List
-            </label>
-            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              {uniqueCount} Valid Numbers Detected
-            </span>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <label className="label mb-0">Phone numbers list</label>
+            <span className="chip chip-info">{uniqueCount} valid numbers</span>
           </div>
           <textarea
             value={numbersText}
             onChange={(e) => setNumbersText(e.target.value)}
             disabled={isCurrentMode2Running}
             rows={4}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs font-mono leading-relaxed"
+            className="field-sm font-mono leading-relaxed"
             placeholder="Paste phone numbers separated by newlines or commas:
 918766375361
 919876543210
 +91 91234 56789"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="hint">
             Tip: You can include country code (e.g. 91). 10-digit Indian numbers auto-prepend 91.
           </p>
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Text Message
-          </label>
+          <label className="label">Text message</label>
           <textarea
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             disabled={isCurrentMode2Running}
             rows={3}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs leading-relaxed"
+            className="field-sm leading-relaxed"
             placeholder="Type your message text here..."
           />
         </div>
@@ -208,43 +225,40 @@ export default function Mode2BulkSender() {
         />
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Anti-Ban Delay between numbers (seconds)
-          </label>
+          <label className="label">Anti-ban delay between numbers (seconds)</label>
           <input
             type="number"
             min="8"
             value={delaySeconds}
             onChange={(e) => setDelaySeconds(Math.max(8, parseInt(e.target.value) || 8))}
             disabled={isCurrentMode2Running}
-            className="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 focus:outline-none text-xs"
+            className="field-sm sm:w-48"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            🛡️ Strictly 1-by-1 sending (+0–6s random jitter aur har 10 numbers par 25–40s breather pause). Min: 8s.
+          <p className="hint">
+            Strictly 1-by-1 sending (+0–6s random jitter aur har 10 numbers par 25–40s breather pause). Min: 8s.
           </p>
         </div>
 
-        <div className="pt-2 flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <button
             type="submit"
             disabled={loading || isCurrentMode2Running || uniqueCount === 0}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white py-2.5 rounded-lg font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+            className={`flex-1 ${loading || isCurrentMode2Running || uniqueCount === 0 ? 'btn-disabled' : 'btn-primary'}`}
           >
-            {loading ? 'Starting...' : isCurrentMode2Running ? 'Bulk Sending Active' : `🚀 Start Bulk Sending (${uniqueCount} contacts)`}
+            {loading
+              ? 'Starting…'
+              : isCurrentMode2Running
+              ? 'Bulk sending active'
+              : `Start bulk sending (${uniqueCount} contacts)`}
           </button>
 
           {isCurrentMode2Running && (
-            <button
-              type="button"
-              onClick={handleStop}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
-            >
-              ⏹ Stop
+            <button type="button" onClick={handleStop} className="btn-danger px-5">
+              Stop
             </button>
           )}
         </div>
       </form>
-    </div>
+    </section>
   );
 }
-

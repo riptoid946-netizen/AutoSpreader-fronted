@@ -96,64 +96,53 @@ export default function Mode3Broadcast() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-          <span className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">3</span>
+    <section className="panel" aria-labelledby="mode3-heading">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 id="mode3-heading" className="panel-title flex items-center gap-2">
+          <span className="num-chip">3</span>
           Mode 3: Broadcast to All Contacts
         </h2>
         {isCurrentMode3Running && (
-          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700 animate-pulse">
-            ● Broadcasting to All Contacts...
+          <span className="chip chip-violet">
+            <span className="status-dot bg-violet-500 animate-pulse" /> Broadcasting…
           </span>
         )}
       </div>
 
-      <p className="text-xs text-slate-500 mb-3">
-        Broadcast your message, separate APK/File, and separate Voice Note to every contact in your WhatsApp account automatically.
-      </p>
-
-      <div className="flex items-start gap-2 p-2.5 mb-4 bg-purple-50 border border-purple-200 rounded-lg text-purple-900 text-[11px] leading-relaxed">
-        <span className="text-sm">✨</span>
-        <span>
-          <strong>Realistic Human Simulation Active:</strong> WhatsApp par blue tick (seen), real typing indicator ("typing..."), file picker delay, aur voice note bhejte waqt real mic animation ("recording audio...") dikhayega.
-        </span>
-      </div>
-
       {/* Live Broadcast Progress Card */}
       {bulkStatus?.mode === 'mode3' && (bulkStatus.running || bulkStatus.current > 0) && (
-        <div className="mb-5 p-4 rounded-xl border border-purple-200 bg-purple-50/60 shadow-sm">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-bold text-purple-900">
-              Broadcast Progress: {bulkStatus.current} / {bulkStatus.total} ({bulkStatus.progressPercentage}%)
+        <div className="mb-5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3.5">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-zinc-200">
+              Broadcast progress: {bulkStatus.current} / {bulkStatus.total} ({bulkStatus.progressPercentage}%)
             </span>
-            <span className="text-xs font-mono font-bold text-purple-700">
-              ✅ {bulkStatus.sent} Sent • ❌ {bulkStatus.failed} Failed
+            <span className="text-[11px] font-medium text-zinc-400">
+              {bulkStatus.sent} sent · {bulkStatus.failed} failed
             </span>
           </div>
 
-          <div className="w-full bg-purple-200/70 rounded-full h-2.5 mb-2 overflow-hidden">
+          <div className="progress-track mb-2">
             <div
-              className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+              className="h-2 rounded-full bg-violet-500 transition-all duration-300"
               style={{ width: `${bulkStatus.progressPercentage}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-600">
+          <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-400">
             <span>
               {bulkStatus.running
                 ? `Currently sending to: ${bulkStatus.currentRecipient || '...'}`
                 : bulkStatus.completed
-                ? '🏁 Broadcast Completed'
-                : '⏹ Broadcast Stopped'}
+                ? 'Broadcast completed'
+                : 'Broadcast stopped'}
             </span>
             {bulkStatus.running && (
               <button
                 type="button"
                 onClick={handleStop}
-                className="text-[11px] bg-red-600 hover:bg-red-700 text-white px-2.5 py-0.5 rounded font-bold transition shadow-sm"
+                className="rounded-md border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-red-600/60 hover:bg-red-600/10 hover:text-red-400"
               >
-                Stop Broadcast
+                Stop broadcast
               </button>
             )}
           </div>
@@ -161,47 +150,47 @@ export default function Mode3Broadcast() {
       )}
 
       {error && (
-        <div className="mb-4 p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-          ⚠️ {error}
+        <div className="banner banner-rose mb-4">
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
       <form onSubmit={handleStart} className="space-y-4">
         {/* Contacts Discovery Banner */}
-        <div className="p-3 bg-purple-50/60 border border-purple-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <span className="text-xs font-bold text-purple-900 block">
-              👥 Target Audience (WhatsApp Chats):
+            <span className="block text-xs font-semibold text-zinc-300">
+              Target audience (WhatsApp chats)
             </span>
-            <span className="text-xs text-purple-700">
-              {loadingChats ? 'Scanning chats...' : `${chatsCount ?? 0} active contacts found in your WhatsApp`}
+            <span className="text-xs text-zinc-400">
+              {loadingChats ? 'Scanning chats…' : `${chatsCount ?? 0} active contacts found in your WhatsApp`}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer font-medium">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer font-medium">
               <input
                 type="checkbox"
                 checked={onlyUnread}
                 onChange={(e) => setOnlyUnread(e.target.checked)}
                 disabled={isCurrentMode3Running}
-                className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500"
+                className="h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-950"
               />
-              <span>Only Unread / Pending</span>
+              <span>Only unread / pending</span>
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer font-medium">
               <input
                 type="checkbox"
                 checked={includeGroups}
                 onChange={(e) => setIncludeGroups(e.target.checked)}
                 disabled={isCurrentMode3Running}
-                className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500"
+                className="h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-950"
               />
-              <span>Include Groups</span>
+              <span>Include groups</span>
             </label>
             <button
               type="button"
               onClick={fetchChats}
-              className="text-xs text-purple-700 underline font-semibold"
+              className="text-xs font-medium text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
             >
               Refresh
             </button>
@@ -209,15 +198,13 @@ export default function Mode3Broadcast() {
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Broadcast Text Message
-          </label>
+          <label className="label">Broadcast text message</label>
           <textarea
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             disabled={isCurrentMode3Running}
             rows={3}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-purple-500 focus:outline-none text-xs leading-relaxed"
+            className="field-sm leading-relaxed"
             placeholder="Type your broadcast message text here..."
           />
         </div>
@@ -239,47 +226,40 @@ export default function Mode3Broadcast() {
         />
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1 uppercase font-bold tracking-wide">
-            Anti-Ban Delay between each contact (seconds)
-          </label>
+          <label className="label">Anti-ban delay between each contact (seconds)</label>
           <input
             type="number"
             min="8"
             value={delaySeconds}
             onChange={(e) => setDelaySeconds(Math.max(8, parseInt(e.target.value) || 8))}
             disabled={isCurrentMode3Running}
-            className="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-slate-300 focus:border-purple-500 focus:outline-none text-xs"
+            className="field-sm sm:w-48"
           />
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            🛡️ Strictly 1-by-1 sending (+0–6s random jitter aur har 10 chats par 25–40s anti-ban pause). Min: 8s.
+          <p className="hint">
+            Strictly 1-by-1 sending (+0–6s random jitter aur har 10 chats par 25–40s anti-ban pause). Min: 8s.
           </p>
         </div>
 
-        <div className="pt-2 flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <button
             type="submit"
             disabled={loading || isCurrentMode3Running || chatsCount === 0}
-            className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:text-slate-500 text-white py-2.5 rounded-lg font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+            className={`flex-1 ${loading || isCurrentMode3Running || chatsCount === 0 ? 'btn-disabled' : 'btn-primary'}`}
           >
             {loading
-              ? 'Starting...'
+              ? 'Starting…'
               : isCurrentMode3Running
-              ? 'Broadcast Active'
-              : `📢 Start ${onlyUnread ? 'Unread' : 'All'} Broadcast (${chatsCount ?? 0} chats)`}
+              ? 'Broadcast active'
+              : `Start ${onlyUnread ? 'unread' : 'all'} broadcast (${chatsCount ?? 0} chats)`}
           </button>
 
           {isCurrentMode3Running && (
-            <button
-              type="button"
-              onClick={handleStop}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs transition shadow-sm"
-            >
-              ⏹ Stop
+            <button type="button" onClick={handleStop} className="btn-danger px-5">
+              Stop
             </button>
           )}
         </div>
       </form>
-    </div>
+    </section>
   );
 }
-
