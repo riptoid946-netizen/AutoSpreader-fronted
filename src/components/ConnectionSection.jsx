@@ -12,10 +12,14 @@ export default function ConnectionSection() {
 
   useEffect(() => {
     loadStatus();
-    // Poll for QR code and connection status every 3 seconds
-    const id = setInterval(loadStatus, 3000);
-    return () => clearInterval(id);
   }, []);
+
+  // Poll faster (1s) while launching browser & waiting for QR so QR appears immediately
+  const fastPoll = Boolean(status.initializing && !status.qrCode && !status.connected);
+  useEffect(() => {
+    const id = setInterval(loadStatus, fastPoll ? 1000 : 3000);
+    return () => clearInterval(id);
+  }, [fastPoll]);
 
   async function loadStatus() {
     try {
@@ -129,6 +133,11 @@ export default function ConnectionSection() {
               </div>
             ) : (
               <div className="space-y-3 py-1">
+                {status.lastError && (
+                  <div className="rounded-lg border border-amber-700/40 bg-amber-900/15 px-3 py-2 text-[11px] text-amber-300">
+                    Browser issue: {status.lastError}. Click Connect again or Disconnect / Reset.
+                  </div>
+                )}
                 <p className="text-xs text-zinc-400">
                   Click below to start WhatsApp and generate your private QR code.
                 </p>
