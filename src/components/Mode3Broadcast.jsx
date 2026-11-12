@@ -23,7 +23,12 @@ export default function Mode3Broadcast() {
     fetchChats();
     checkStatus();
     const interval = setInterval(checkStatus, 2500);
-    return () => clearInterval(interval);
+    const onStatusChanged = () => fetchChats();
+    window.addEventListener('wa-status-changed', onStatusChanged);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('wa-status-changed', onStatusChanged);
+    };
   }, [includeGroups, onlyUnread]);
 
   async function fetchChats() {

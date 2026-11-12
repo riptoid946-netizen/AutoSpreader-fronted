@@ -17,7 +17,14 @@ export default function AccountSwitcher({ onAccountChange }) {
   useEffect(() => {
     loadAccounts();
     const interval = setInterval(loadAccounts, 4000);
-    return () => clearInterval(interval);
+    const onAccountChanged = (e) => {
+      if (e.detail) setActiveId(e.detail);
+    };
+    window.addEventListener('wa-account-changed', onAccountChanged);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('wa-account-changed', onAccountChanged);
+    };
   }, []);
 
   async function loadAccounts() {
@@ -25,7 +32,9 @@ export default function AccountSwitcher({ onAccountChange }) {
       const data = await getAccounts();
       if (data && Array.isArray(data.accounts)) {
         setAccounts(data.accounts);
-        if (data.accounts.length > 0 && !data.accounts.some((a) => a.id === activeId)) {
+        const currentId = getActiveAccountId();
+        setActiveId((prev) => (prev === currentId ? prev : currentId));
+        if (data.accounts.length > 0 && !data.accounts.some((a) => a.id === currentId)) {
           handleSwitch(data.accounts[0].id);
         }
       }
@@ -107,7 +116,7 @@ export default function AccountSwitcher({ onAccountChange }) {
           >
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
-                {acc.name} {acc.phone ? `(+${acc.phone})` : ''} — {acc.isReady ? 'Connected' : (acc.qrCode ? 'Scan QR' : 'Offline')}
+                {acc.name} {acc.phone ? `(+${acc.phone})` : ''} — {acc.isReady ? 'Connected' : (acc.authenticating ? 'Syncing…' : (acc.qrCode ? 'Scan QR' : (acc.initializing ? 'Starting…' : 'Offline')))}
               </option>
             ))}
           </select>

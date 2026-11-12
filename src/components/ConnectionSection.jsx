@@ -24,7 +24,12 @@ export default function ConnectionSection() {
   async function loadStatus() {
     try {
       const data = await getWhatsAppStatus();
-      setStatus(data);
+      setStatus((prev) => {
+        if (!prev.connected && data.connected) {
+          window.dispatchEvent(new CustomEvent('wa-status-changed', { detail: data }));
+        }
+        return data;
+      });
     } catch (err) {
       // handled gracefully
     }
