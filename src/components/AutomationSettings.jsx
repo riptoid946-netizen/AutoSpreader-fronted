@@ -7,11 +7,24 @@ import {
   getAutomationStatus,
 } from '../services/api';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
+import MultiMessageEditor from './MultiMessageEditor';
+
+function toEditorList(data) {
+  if (Array.isArray(data?.automated_messages)) {
+    const cleaned = data.automated_messages.map((m) => String(m ?? '')).filter((m) => m.trim().length > 0);
+    return cleaned.length > 0 ? cleaned : [''];
+  }
+  if (typeof data?.automated_message === 'string' && data.automated_message.trim()) {
+    return [data.automated_message];
+  }
+  return [''];
+}
 
 export default function AutomationSettings() {
   const [config, setConfig] = useState({
     mode1_enabled: 0,
     automated_message: 'Hello! Thank you for messaging us. We will get back to you shortly.',
+    automated_messages: ['Hello! Thank you for messaging us. We will get back to you shortly.'],
     reply_delay_seconds: 10,
     reply_once_per_contact: 1,
     mode1_file_path: null,
@@ -31,9 +44,11 @@ export default function AutomationSettings() {
   async function loadConfig() {
     try {
       const data = await getConfig();
+      const msgList = toEditorList(data);
       setConfig({
         mode1_enabled: data.mode1_enabled ?? 0,
-        automated_message: data.automated_message || '',
+        automated_message: msgList[0] || '',
+        automated_messages: msgList,
         reply_delay_seconds: data.reply_delay_seconds ?? 10,
         reply_once_per_contact: data.reply_once_per_contact ?? 1,
         mode1_file_path: data.mode1_file_path || null,
@@ -55,30 +70,42 @@ export default function AutomationSettings() {
     }
   }
 
+  async function saveCurrentConfig(override = {}) {
+    const cleanMessages = (config.automated_messages || [])
+      .map((m) => String(m || '').trim())
+      .filter(Boolean);
+    const data = await updateConfig({
+      mode1_enabled: config.mode1_enabled ? 1 : 0,
+      automated_messages: cleanMessages,
+      automated_message: cleanMessages[0] || '',
+      reply_delay_seconds: config.reply_delay_seconds,
+      reply_once_per_contact: config.reply_once_per_contact ? 1 : 0,
+      mode1_file_path: config.mode1_file_path,
+      mode1_file_name: config.mode1_file_name,
+      mode1_voice_path: config.mode1_voice_path,
+      mode1_voice_name: config.mode1_voice_name,
+      ...override,
+    });
+    const savedList = toEditorList(data);
+    setConfig({
+      mode1_enabled: data.mode1_enabled ?? 0,
+      automated_message: savedList[0] || '',
+      automated_messages: savedList,
+      reply_delay_seconds: data.reply_delay_seconds ?? 10,
+      reply_once_per_contact: data.reply_once_per_contact ?? 1,
+      mode1_file_path: data.mode1_file_path || null,
+      mode1_file_name: data.mode1_file_name || null,
+      mode1_voice_path: data.mode1_voice_path || null,
+      mode1_voice_name: data.mode1_voice_name || null,
+    });
+    return data;
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await updateConfig({
-        mode1_enabled: config.mode1_enabled ? 1 : 0,
-        automated_message: config.automated_message,
-        reply_delay_seconds: config.reply_delay_seconds,
-        reply_once_per_contact: config.reply_once_per_contact ? 1 : 0,
-        mode1_file_path: config.mode1_file_path,
-        mode1_file_name: config.mode1_file_name,
-        mode1_voice_path: config.mode1_voice_path,
-        mode1_voice_name: config.mode1_voice_name,
-      });
-      setConfig({
-        mode1_enabled: data.mode1_enabled ?? 0,
-        automated_message: data.automated_message,
-        reply_delay_seconds: data.reply_delay_seconds ?? 10,
-        reply_once_per_contact: data.reply_once_per_contact ?? 1,
-        mode1_file_path: data.mode1_file_path || null,
-        mode1_file_name: data.mode1_file_name || null,
-        mode1_voice_path: data.mode1_voice_path || null,
-        mode1_voice_name: data.mode1_voice_name || null,
-      });
+      await saveCurrentConfig();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
@@ -91,6 +118,7 @@ export default function AutomationSettings() {
   async function handleStart() {
     setLoading(true);
     try {
+      await saveCurrentConfig({ mode1_enabled: 1 });
       await startAutomation();
       setRunning(true);
       setConfig((prev) => ({ ...prev, mode1_enabled: 1 }));
@@ -149,16 +177,18 @@ export default function AutomationSettings() {
           </label>
         </div>
 
-        <div>
-          <label className="label">Automated reply text message</label>
-          <textarea
-            value={config.automated_message}
-            onChange={(e) => setConfig({ ...config, automated_message: e.target.value })}
-            rows={3}
-            className="field-sm leading-relaxed"
-            placeholder="Type your auto-reply text message here..."
-          />
-        </div>
+        <MultiMessageEditor
+          messages={config.automated_messages}
+          onChange={(next) =>
+            setConfig({
+              ...config,
+              automated_messages: next,
+              automated_message: next[0] || '',
+            })
+          }
+          label="Automated reply text messages"
+          placeholder="Type your auto-reply text message here..."
+        />
 
         {/* Media Attachments Picker (APK / Files & Voice Notes) */}
         <MediaAttachmentPicker

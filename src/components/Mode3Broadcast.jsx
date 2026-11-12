@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { startMode3, stopBulk, getBulkStatus, getWhatsAppChats } from '../services/api';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
+import MultiMessageEditor from './MultiMessageEditor';
 
 export default function Mode3Broadcast() {
-  const [messageText, setMessageText] = useState('');
+  const [messagesList, setMessagesList] = useState(['']);
   const [filePath, setFilePath] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [voicePath, setVoicePath] = useState(null);
@@ -57,7 +58,8 @@ export default function Mode3Broadcast() {
       return;
     }
 
-    if (!messageText.trim() && !filePath && !voicePath) {
+    const cleanMessages = messagesList.map((m) => String(m || '').trim()).filter(Boolean);
+    if (cleanMessages.length === 0 && !filePath && !voicePath) {
       setError('Please provide at least a message text, a file/APK, or a voice note.');
       return;
     }
@@ -69,7 +71,8 @@ export default function Mode3Broadcast() {
     setLoading(true);
     try {
       await startMode3({
-        message: messageText,
+        message: cleanMessages[0] || '',
+        messages: cleanMessages,
         filePath,
         fileName,
         voicePath,
@@ -197,17 +200,13 @@ export default function Mode3Broadcast() {
           </div>
         </div>
 
-        <div>
-          <label className="label">Broadcast text message</label>
-          <textarea
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            disabled={isCurrentMode3Running}
-            rows={3}
-            className="field-sm leading-relaxed"
-            placeholder="Type your broadcast message text here..."
-          />
-        </div>
+        <MultiMessageEditor
+          messages={messagesList}
+          onChange={setMessagesList}
+          disabled={isCurrentMode3Running}
+          label="Broadcast text messages"
+          placeholder="Type your broadcast message text here..."
+        />
 
         {/* Media Attachments Picker (APK / Files & Voice Notes) */}
         <MediaAttachmentPicker

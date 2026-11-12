@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { startMode2, stopBulk, getBulkStatus } from '../services/api';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
+import MultiMessageEditor from './MultiMessageEditor';
 
 export default function Mode2BulkSender() {
   const [numbersText, setNumbersText] = useState('');
-  const [messageText, setMessageText] = useState('');
+  const [messagesList, setMessagesList] = useState(['']);
   const [filePath, setFilePath] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [voicePath, setVoicePath] = useState(null);
@@ -54,7 +55,8 @@ export default function Mode2BulkSender() {
       setError('Please enter at least one valid phone number (10+ digits).');
       return;
     }
-    if (!messageText.trim() && !filePath && !voicePath) {
+    const cleanMessages = messagesList.map((m) => String(m || '').trim()).filter(Boolean);
+    if (cleanMessages.length === 0 && !filePath && !voicePath) {
       setError('Please provide at least a message text, a file/APK, or a voice note.');
       return;
     }
@@ -64,7 +66,8 @@ export default function Mode2BulkSender() {
     try {
       const result = await startMode2({
         numbers: numbersText,
-        message: messageText,
+        message: cleanMessages[0] || '',
+        messages: cleanMessages,
         filePath,
         fileName,
         voicePath,
@@ -196,17 +199,13 @@ export default function Mode2BulkSender() {
           </p>
         </div>
 
-        <div>
-          <label className="label">Text message</label>
-          <textarea
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            disabled={isCurrentMode2Running}
-            rows={3}
-            className="field-sm leading-relaxed"
-            placeholder="Type your message text here..."
-          />
-        </div>
+        <MultiMessageEditor
+          messages={messagesList}
+          onChange={setMessagesList}
+          disabled={isCurrentMode2Running}
+          label="Text messages"
+          placeholder="Type your message text here..."
+        />
 
         {/* Media Attachments Picker (APK / Files & Voice Notes) */}
         <MediaAttachmentPicker
