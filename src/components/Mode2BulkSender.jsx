@@ -16,6 +16,7 @@ export default function Mode2BulkSender() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [startedInfo, setStartedInfo] = useState(null);
+  const [coldConfirm, setColdConfirm] = useState(null);
   // Synchronous guard: blocks a second submit before React re-renders the disabled button
   const submittingRef = useRef(false);
   const infoTimerRef = useRef(null);
@@ -74,6 +75,47 @@ export default function Mode2BulkSender() {
         voiceName,
         delaySeconds,
       });
+
+      // Anti-spam cold-contact gate: backend wants explicit confirmation
+      if (result.needsColdConfirm) {
+        setColdConfirm(result);
+        return;
+      }
+      setColdConfirm(null);
+      showInfo(
+        result.duplicate
+          ? `Already started — duplicate click ignored (campaign #${result.campaignId} is running).`
+          : `🚀 Campaign #${result.campaignId} started to ${result.total} contact${result.total === 1 ? '' : 's'}. Sending 1-by-1 — progress shows below.`
+      );
+      await checkStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  }
+
+  // User explicitly accepted the cold-outreach risk
+  async function confirmColdSend() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanMessages = messagesList.map((m) => String(m || '').trim()).filter(Boolean);
+      const result = await startMode2({
+        numbers: numbersText,
+        message: cleanMessages[0] || '',
+        messages: cleanMessages,
+        filePath,
+        fileName,
+        voicePath,
+        voiceName,
+        delaySeconds,
+        confirmCold: true,
+      });
+      setColdConfirm(null);
       showInfo(
         result.duplicate
           ? `Already started — duplicate click ignored (campaign #${result.campaignId} is running).`
@@ -128,6 +170,42 @@ export default function Mode2BulkSender() {
       {startedInfo && (
         <div className="mb-4 rounded-lg border border-emerald-700/50 bg-emerald-700/10 px-3.5 py-2.5 text-xs font-medium text-emerald-300" role="status">
           {startedInfo}
+        </div>
+      )}
+
+      {/* Anti-spam cold-contact confirmation (ban protection) */}
+      {coldConfirm && (
+        <div className="mb-4 rounded-lg border border-amber-700/50 bg-amber-700/10 px-3.5 py-2.5 text-xs text-amber-200" role="alert">
+          <p className="font-semibold">
+            ⚠️ {coldConfirm.coldCount} of {coldConfirm.total} numbers have NEVER chatted with this account (cold outreach).
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">
+            Cold messaging is the #1 reason WhatsApp bans accounts — unknown senders get reported as spam.
+            Recommended: message warm contacts only, or get them to reply first (Mode 1 auto-reply).
+          </p>
+          {coldConfirm.coldSample?.length > 0 && (
+            <p className="mt-1 font-mono text-[10px] text-zinc-500">
+              Cold sample: {coldConfirm.coldSample.slice(0, 5).join(', ')}{coldConfirm.coldCount > 5 ? '…' : ''}
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={confirmColdSend}
+              disabled={loading}
+              className="rounded-md border border-amber-700/60 bg-amber-700/20 px-3 py-1.5 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-700/30 disabled:opacity-50"
+            >
+              {loading ? 'Starting…' : `Confirm & send to all ${coldConfirm.total}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setColdConfirm(null)}
+              disabled={loading}
+              className="rounded-md border border-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-zinc-500 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
