@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   getWhatsAppStatus,
   disconnectWhatsApp,
@@ -7,8 +7,9 @@ import {
 } from '../services/api';
 
 export default function ConnectionSection() {
-  const [status, setStatus] = useState({ connected: false, initializing: false, qrCode: null, clientInfo: null });
+  const [status, setStatus] = useState({ connected: false, initializing: false, qrCode: null, qrVersion: 0, clientInfo: null });
   const [loading, setLoading] = useState(false);
+  const qrVersionRef = useRef(null);
 
   useEffect(() => {
     loadStatus();
@@ -23,12 +24,17 @@ export default function ConnectionSection() {
 
   async function loadStatus() {
     try {
-      const data = await getWhatsAppStatus();
+      const data = await getWhatsAppStatus(qrVersionRef.current);
       setStatus((prev) => {
+        const nextQr = data.qrUnchanged ? prev.qrCode : (data.qrCode ?? null);
+        qrVersionRef.current = nextQr ? (data.qrVersion ?? null) : null;
         if (!prev.connected && data.connected) {
           window.dispatchEvent(new CustomEvent('wa-status-changed', { detail: data }));
         }
-        return data;
+        return {
+          ...data,
+          qrCode: nextQr,
+        };
       });
     } catch (err) {
       // handled gracefully
@@ -54,7 +60,8 @@ export default function ConnectionSection() {
     setLoading(true);
     try {
       await disconnectWhatsApp();
-      setStatus({ connected: false, qrCode: null, clientInfo: null });
+      qrVersionRef.current = null;
+      setStatus({ connected: false, qrCode: null, qrVersion: 0, clientInfo: null });
     } catch (err) {
       alert('Disconnect failed: ' + err.message);
     } finally {

@@ -197,17 +197,20 @@ export async function clearMessages() {
   return apiFetch('/messages/clear', { method: 'POST' });
 }
 
-export async function getWhatsAppStatus() {
-  return apiFetch('/whatsapp/status');
+export async function getWhatsAppStatus(qrVersion = null) {
+  const query = qrVersion !== null && qrVersion !== undefined
+    ? `?qrVersion=${encodeURIComponent(qrVersion)}`
+    : '';
+  return apiFetch(`/whatsapp/status${query}`);
 }
 
 export async function disconnectWhatsApp() {
   return apiFetch('/whatsapp/disconnect', { method: 'POST' });
 }
 
-export async function getWhatsAppChats(includeGroups = false, onlyUnread = false) {
+export async function getWhatsAppChats(includeGroups = false, onlyUnread = false, refresh = false) {
   return apiFetch(
-    `/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}&onlyUnread=${onlyUnread ? 'true' : 'false'}`
+    `/whatsapp/chats?groups=${includeGroups ? 'true' : 'false'}&onlyUnread=${onlyUnread ? 'true' : 'false'}${refresh ? '&refresh=true' : ''}`
   );
 }
 

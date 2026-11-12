@@ -31,10 +31,10 @@ export default function Mode3Broadcast() {
     };
   }, [includeGroups, onlyUnread]);
 
-  async function fetchChats() {
+  async function fetchChats(forceRefresh = false) {
     setLoadingChats(true);
     try {
-      const res = await getWhatsAppChats(includeGroups, onlyUnread);
+      const res = await getWhatsAppChats(includeGroups, onlyUnread, forceRefresh);
       setChatsCount(res.count ?? 0);
     } catch (err) {
       console.error('Failed to fetch chats:', err);
@@ -197,7 +197,7 @@ export default function Mode3Broadcast() {
             </label>
             <button
               type="button"
-              onClick={fetchChats}
+              onClick={() => fetchChats(true)}
               className="text-xs font-medium text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
             >
               Refresh
