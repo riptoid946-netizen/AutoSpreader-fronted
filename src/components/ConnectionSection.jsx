@@ -14,8 +14,8 @@ export default function ConnectionSection() {
     loadStatus();
   }, []);
 
-  // Poll faster (1s) while launching browser & waiting for QR so QR appears immediately
-  const fastPoll = Boolean(status.initializing && !status.qrCode && !status.connected);
+  // Poll faster (1s) while launching browser or syncing after QR scan
+  const fastPoll = Boolean((status.initializing || status.authenticating) && !status.connected);
   useEffect(() => {
     const id = setInterval(loadStatus, fastPoll ? 1000 : 3000);
     return () => clearInterval(id);
@@ -70,6 +70,8 @@ export default function ConnectionSection() {
               className={`mt-0.5 flex items-center gap-2 text-sm font-medium ${
                 status.connected
                   ? 'text-emerald-400'
+                  : status.authenticating
+                  ? 'text-emerald-300'
                   : status.qrCode
                   ? 'text-amber-400'
                   : status.initializing
@@ -80,6 +82,10 @@ export default function ConnectionSection() {
               {status.connected ? (
                 <>
                   <span className="status-dot bg-emerald-500 animate-pulse" /> Connected
+                </>
+              ) : status.authenticating ? (
+                <>
+                  <span className="status-dot bg-emerald-400 animate-pulse" /> QR scanned — syncing chats…
                 </>
               ) : status.qrCode ? (
                 <>
@@ -105,7 +111,18 @@ export default function ConnectionSection() {
 
         {!status.connected ? (
           <div className="space-y-3">
-            {status.qrCode ? (
+            {status.authenticating ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <span className="spinner" />
+                <p className="text-xs font-medium text-emerald-300">
+                  QR Scanned! Syncing WhatsApp chats
+                  {typeof status.loadingPercent === 'number' ? ` (${status.loadingPercent}%)` : '…'}
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Wait 5–15 seconds — page refresh ya reset mat karna.
+                </p>
+              </div>
+            ) : status.qrCode ? (
               <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
                 <p className="text-[11px] font-medium text-zinc-400">
                   Scan this QR with WhatsApp
