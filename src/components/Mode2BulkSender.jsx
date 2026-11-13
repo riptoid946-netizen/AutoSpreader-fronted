@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { startMode2, stopBulk, getBulkStatus } from '../services/api';
+import { smartPoll } from '../services/smartPoll';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
 
@@ -22,9 +23,7 @@ export default function Mode2BulkSender() {
   const infoTimerRef = useRef(null);
 
   useEffect(() => {
-    checkStatus();
-    const interval = setInterval(checkStatus, 2500);
-    return () => clearInterval(interval);
+    return smartPoll(checkStatus, 2500);
   }, []);
 
   async function checkStatus() {

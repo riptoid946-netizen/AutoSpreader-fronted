@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import {
-  getStats,
+  getDashboardSnapshot,
   getActiveAccountId,
   setActiveAccountId,
   getAuthToken,
@@ -8,8 +8,8 @@ import {
   getMe,
   logoutUser,
 } from '../services/api';
+import { smartPoll } from '../services/smartPoll';
 import AuthScreen from './AuthScreen';
-import AdminUsersPanel from './AdminUsersPanel';
 import ConnectionSection from './ConnectionSection';
 import AutomationSettings from './AutomationSettings';
 import Mode2BulkSender from './Mode2BulkSender';
@@ -19,15 +19,21 @@ import ActivityLogs from './ActivityLogs';
 import AccountSwitcher from './AccountSwitcher';
 import BrandLogo from './BrandLogo';
 
+// Admin panel loads only when an admin actually opens that tab (smaller main bundle)
+const AdminUsersPanel = lazy(() => import('./AdminUsersPanel'));
+
 export default function Dashboard() {
   const [user, setUser] = useState(() => (getAuthToken() ? getStoredUser() : null));
   const [authChecked, setAuthChecked] = useState(!getAuthToken());
   const [activeTab, setActiveTab] = useState('mode1'); // 'mode1', 'mode2', 'mode3'
-  const [stats, setStats] = useState({ totalReplied: 0, totalSuccessful: 0, totalFailed: 0, totalIncoming: 0 });
+  const [snap, setSnap] = useState(null);
   const [activeAccount, setActiveAccount] = useState(getActiveAccountId());
   const [refreshKey, setRefreshKey] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
+
+  // Stats derived from the snapshot (no separate polling loop anymore)
+  const stats = snap?.stats ?? { totalReplied: 0, totalSuccessful: 0, totalFailed: 0, totalIncoming: 0 };
 
   // Leaving mobile width → close menu & restore scroll
   useEffect(() => {
@@ -81,22 +87,22 @@ export default function Dashboard() {
     return () => window.removeEventListener('wa-auth-changed', onAuthChanged);
   }, []);
 
-  const fetchStats = async () => {
+  // ONE snapshot poll (4s, tab-hidden aware) replaces the old stats/messages/logs/
+  // accounts loops. 304 (nothing changed) → data is null → keep previous state.
+  const loadSnapshot = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await getStats();
-      setStats(data);
+      const data = await getDashboardSnapshot();
+      if (data) setSnap(data);
     } catch (err) {
       // handled gracefully
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    fetchStats();
-    const interval = setInterval(fetchStats, 4000);
-    return () => clearInterval(interval);
-  }, [activeAccount, user]);
+    return smartPoll(loadSnapshot, 4000);
+  }, [user, activeAccount, refreshKey]);
 
   const handleAccountChange = (id) => {
     setActiveAccount(id);
@@ -175,6 +181,12 @@ export default function Dashboard() {
 
           {!isMobile && (
             <div className="flex flex-wrap items-center gap-2">
+            {snap?.bulk?.running && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-700/15 px-2.5 py-1.5 text-xs font-medium text-emerald-300">
+                <span className="status-dot bg-emerald-400 animate-pulse" />
+                Bulk running {snap.bulk.progressPercentage ?? 0}%
+              </span>
+            )}
             <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300">
               <span className="font-medium">{user.username}</span>
               {user.role === 'admin' ? (
@@ -188,7 +200,7 @@ export default function Dashboard() {
               )}
             </span>
 
-            <AccountSwitcher onAccountChange={handleAccountChange} />
+            <AccountSwitcher onAccountChange={handleAccountChange} accounts={snap?.accounts} onRefresh={loadSnapshot} />
 
             <button
               onClick={logoutUser}
@@ -239,7 +251,7 @@ export default function Dashboard() {
               <div className="flex-1 space-y-4 overflow-y-auto p-4">
                 <div>
                   <p className="label">WhatsApp Account</p>
-                  <AccountSwitcher onAccountChange={handleAccountChange} />
+                  <AccountSwitcher onAccountChange={handleAccountChange} accounts={snap?.accounts} onRefresh={loadSnapshot} />
                 </div>
 
                 <div>
@@ -417,7 +429,15 @@ export default function Dashboard() {
         {/* Admin User Management View (Exclusive to Admin) */}
         <div role="tabpanel" id="mode-panel" aria-labelledby={`tab-${activeTab}`}>
           {activeTab === 'admin' && user.role === 'admin' ? (
-            <AdminUsersPanel />
+            <Suspense
+              fallback={
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-xs text-zinc-400">
+                  Loading admin panel…
+                </div>
+              }
+            >
+              <AdminUsersPanel />
+            </Suspense>
           ) : (
             /* Main Content Grid (reloads automatically when account switches) */
             <div key={refreshKey} className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -432,8 +452,8 @@ export default function Dashboard() {
 
               {/* Right Column: Live Messages Inbox + Activity Logs */}
               <div className="lg:col-span-7 space-y-5">
-                <MessagesList />
-                <ActivityLogs />
+                <MessagesList messages={snap?.messages} onRefresh={loadSnapshot} />
+                <ActivityLogs logs={snap?.logs} />
               </div>
             </div>
           )}

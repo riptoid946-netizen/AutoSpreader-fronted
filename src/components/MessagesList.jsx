@@ -1,55 +1,55 @@
-import { useState, useEffect } from 'react';
-import { getMessages, clearMessages } from '../services/api';
+import { useState, useMemo } from 'react';
+import { clearMessages } from '../services/api';
 
-export default function MessagesList() {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Props-driven: messages arrive from the dashboard snapshot poll (Dashboard.jsx),
+// so this component runs no polling loop of its own. onRefresh re-pulls the
+// snapshot after a mutation (Clear).
+export default function MessagesList({ messages, onRefresh }) {
   const [filter, setFilter] = useState('all'); // all, incoming, outgoing
   const [search, setSearch] = useState('');
+  const [clearing, setClearing] = useState(false);
 
-  useEffect(() => {
-    loadMessages();
-    const interval = setInterval(loadMessages, 3500);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function loadMessages() {
-    try {
-      const data = await getMessages(100);
-      setMessages(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Failed to load messages:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const list = Array.isArray(messages) ? messages : [];
+  const loading = messages == null; // snapshot hasn't arrived yet
 
   async function handleClear() {
     if (window.confirm('Are you sure you want to clear message history and reply records?')) {
+      setClearing(true);
       try {
         await clearMessages();
-        await loadMessages();
+        if (onRefresh) await onRefresh();
       } catch (err) {
         alert('Failed to clear: ' + err.message);
+      } finally {
+        setClearing(false);
       }
     }
   }
 
-  const filtered = messages.filter((m) => {
-    if (filter === 'incoming' && m.direction !== 'incoming') return false;
-    if (filter === 'outgoing' && m.direction !== 'outgoing') return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const matchText = (m.message_text || '').toLowerCase().includes(q);
-      const matchPhone = (m.phone_number || '').toLowerCase().includes(q);
-      const matchName = (m.sender_name || '').toLowerCase().includes(q);
-      return matchText || matchPhone || matchName;
-    }
-    return true;
-  });
+  const filtered = useMemo(
+    () =>
+      list.filter((m) => {
+        if (filter === 'incoming' && m.direction !== 'incoming') return false;
+        if (filter === 'outgoing' && m.direction !== 'outgoing') return false;
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          const matchText = (m.message_text || '').toLowerCase().includes(q);
+          const matchPhone = (m.phone_number || '').toLowerCase().includes(q);
+          const matchName = (m.sender_name || '').toLowerCase().includes(q);
+          return matchText || matchPhone || matchName;
+        }
+        return true;
+      }),
+    [list, filter, search]
+  );
 
-  const incomingCount = messages.filter((m) => m.direction === 'incoming').length;
-  const outgoingCount = messages.filter((m) => m.direction === 'outgoing').length;
+  const counts = useMemo(
+    () => ({
+      incoming: list.filter((m) => m.direction === 'incoming').length,
+      outgoing: list.filter((m) => m.direction === 'outgoing').length,
+    }),
+    [list]
+  );
 
   return (
     <section className="panel" aria-labelledby="messages-heading">
@@ -62,16 +62,17 @@ export default function MessagesList() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="chip chip-success">{incomingCount} received</span>
-          <span className="chip chip-idle">{outgoingCount} replied</span>
-          {messages.length > 0 && (
+          <span className="chip chip-success">{counts.incoming} received</span>
+          <span className="chip chip-idle">{counts.outgoing} replied</span>
+          {list.length > 0 && (
             <button
               onClick={handleClear}
+              disabled={clearing}
               aria-label="Clear message logs"
-              className="rounded-md px-2 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+              className="rounded-md px-2 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-50"
               title="Clear message logs"
             >
-              Clear
+              {clearing ? 'Clearing…' : 'Clear'}
             </button>
           )}
         </div>
@@ -94,7 +95,7 @@ export default function MessagesList() {
                 : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
-            All ({messages.length})
+            All ({list.length})
           </button>
           <button
             onClick={() => setFilter('incoming')}
@@ -104,7 +105,7 @@ export default function MessagesList() {
                 : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
-            Users ({incomingCount})
+            Users ({counts.incoming})
           </button>
           <button
             onClick={() => setFilter('outgoing')}
@@ -114,7 +115,7 @@ export default function MessagesList() {
                 : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
-            Auto Replies ({outgoingCount})
+            Auto Replies ({counts.outgoing})
           </button>
         </div>
       </div>
@@ -128,7 +129,7 @@ export default function MessagesList() {
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-800 py-10 text-center">
           <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-            {messages.length === 0
+            {list.length === 0
               ? 'No messages yet. When a user sends a message on WhatsApp, it will be saved and displayed here automatically.'
               : 'No matching messages found for current filter.'}
           </p>
@@ -180,7 +181,7 @@ export default function MessagesList() {
                       </span>
                     )}
                     {Boolean(msg.has_voice) && (
-                      <span className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400">
+                      <span className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400 font-mono">
                         Voice note sent
                       </span>
                     )}

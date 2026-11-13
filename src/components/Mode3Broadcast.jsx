@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { startMode3, stopBulk, getBulkStatus, getWhatsAppChats } from '../services/api';
+import { smartPoll } from '../services/smartPoll';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
 
@@ -21,12 +22,11 @@ export default function Mode3Broadcast() {
 
   useEffect(() => {
     fetchChats();
-    checkStatus();
-    const interval = setInterval(checkStatus, 2500);
+    const stopPoll = smartPoll(checkStatus, 2500);
     const onStatusChanged = () => fetchChats();
     window.addEventListener('wa-status-changed', onStatusChanged);
     return () => {
-      clearInterval(interval);
+      stopPoll();
       window.removeEventListener('wa-status-changed', onStatusChanged);
     };
   }, [includeGroups, onlyUnread]);

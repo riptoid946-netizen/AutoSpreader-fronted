@@ -1,47 +1,42 @@
 import { useState, useEffect } from 'react';
 import {
-  getAccounts,
   createAccount,
   deleteAccount,
   getActiveAccountId,
   setActiveAccountId,
 } from '../services/api';
 
-export default function AccountSwitcher({ onAccountChange }) {
-  const [accounts, setAccounts] = useState([]);
+// Props-driven: accounts arrive from the dashboard snapshot poll (Dashboard.jsx),
+// so this component runs no polling loop of its own. onRefresh re-pulls the
+// snapshot after a mutation (create/delete account).
+export default function AccountSwitcher({ onAccountChange, accounts: accountsProp, onRefresh }) {
+  const [accounts, setAccounts] = useState(Array.isArray(accountsProp) ? accountsProp : []);
   const [activeId, setActiveId] = useState(getActiveAccountId());
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadAccounts();
-    const interval = setInterval(loadAccounts, 4000);
     const onAccountChanged = (e) => {
       if (e.detail) setActiveId(e.detail);
     };
     window.addEventListener('wa-account-changed', onAccountChanged);
     return () => {
-      clearInterval(interval);
       window.removeEventListener('wa-account-changed', onAccountChanged);
     };
   }, []);
 
-  async function loadAccounts() {
-    try {
-      const data = await getAccounts();
-      if (data && Array.isArray(data.accounts)) {
-        setAccounts(data.accounts);
-        const currentId = getActiveAccountId();
-        setActiveId((prev) => (prev === currentId ? prev : currentId));
-        if (data.accounts.length > 0 && !data.accounts.some((a) => a.id === currentId)) {
-          handleSwitch(data.accounts[0].id);
-        }
-      }
-    } catch (err) {
-      // ignore poll error
+  // Snapshot data lands here — same auto-switch guard as before
+  useEffect(() => {
+    if (!Array.isArray(accountsProp)) return;
+    setAccounts(accountsProp);
+    const currentId = getActiveAccountId();
+    setActiveId((prev) => (prev === currentId ? prev : currentId));
+    if (accountsProp.length > 0 && !accountsProp.some((a) => a.id === currentId)) {
+      handleSwitch(accountsProp[0].id);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountsProp]);
 
   function handleSwitch(id) {
     setActiveId(id);
@@ -60,11 +55,12 @@ export default function AccountSwitcher({ onAccountChange }) {
       if (res.success && res.account) {
         setNewAccountName('');
         setShowAddModal(false);
-        await loadAccounts();
+        if (onRefresh) await onRefresh();
         handleSwitch(res.account.id);
       }
     } catch (err) {
       alert('Failed to add account: ' + err.message);
+      if (onRefresh) onRefresh();
     } finally {
       setLoading(false);
     }
@@ -76,16 +72,16 @@ export default function AccountSwitcher({ onAccountChange }) {
       return;
     }
     if (window.confirm(`Are you sure you want to remove "${name}"? Its session and history will be cleared.`)) {
+      const remaining = accounts.filter((a) => a.id !== id);
       try {
         await deleteAccount(id);
-        const data = await getAccounts();
-        const updatedList = data?.accounts || [];
-        setAccounts(updatedList);
-        if (activeId === id && updatedList.length > 0) {
-          handleSwitch(updatedList[0].id);
+        if (onRefresh) await onRefresh();
+        if (activeId === id && remaining.length > 0) {
+          handleSwitch(remaining[0].id);
         }
       } catch (err) {
         alert('Failed to delete: ' + err.message);
+        if (onRefresh) onRefresh();
       }
     }
   }

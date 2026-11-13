@@ -10,6 +10,10 @@ const TOKEN_KEY = 'wa_auth_token';
 const USER_KEY = 'wa_auth_user';
 const ACCOUNT_KEY = 'wa_active_account';
 
+// ETag of the last dashboard snapshot response — lets the server answer 304
+// (empty body) when nothing changed since the previous poll.
+let snapshotEtag = null;
+
 export function getAuthToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
 }
@@ -34,6 +38,7 @@ export function clearAuthSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(ACCOUNT_KEY);
+  snapshotEtag = null; // snapshot cache is user/account scoped
   window.dispatchEvent(new CustomEvent('wa-auth-changed', { detail: null }));
 }
 
@@ -183,6 +188,29 @@ export async function updateConfig(data) {
 
 export async function getStats() {
   return apiFetch('/stats');
+}
+
+// ONE request instead of the old 5 polling loops. Returns null on 304 (nothing
+// changed) so callers keep their previous state without a re-render.
+export async function getDashboardSnapshot() {
+  const headers = getHeaders();
+  if (snapshotEtag) headers['If-None-Match'] = snapshotEtag;
+  const res = await fetch(`${BASE_URL}/dashboard/snapshot`, { headers });
+
+  if (res.status === 304) return null;
+  if (res.status === 401) {
+    clearAuthSession();
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  const et = res.headers.get('ETag');
+  if (et) snapshotEtag = et;
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Snapshot failed with status ${res.status}`);
+  }
+  return data;
 }
 
 export async function getLogs(limit = 50) {

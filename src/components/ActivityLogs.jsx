@@ -1,26 +1,8 @@
-import { useState, useEffect } from 'react';
-import { getLogs } from '../services/api';
-
-export default function ActivityLogs() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadLogs();
-    const interval = setInterval(loadLogs, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function loadLogs() {
-    try {
-      const data = await getLogs(30);
-      setLogs(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Failed to load logs:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
+// Props-driven: logs arrive from the dashboard snapshot poll (Dashboard.jsx),
+// so this component runs no polling loop of its own.
+export default function ActivityLogs({ logs }) {
+  const list = Array.isArray(logs) ? logs : [];
+  const loading = logs == null; // snapshot hasn't arrived yet
 
   const levelColor = (level) => {
     switch (level) {
@@ -43,7 +25,7 @@ export default function ActivityLogs() {
           <div className="skeleton h-6 w-5/6" />
           <div className="skeleton h-6 w-2/3" />
         </div>
-      ) : logs.length === 0 ? (
+      ) : list.length === 0 ? (
         <p className="text-sm text-zinc-400">No activity yet. Connect WhatsApp and start automation to see logs.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -56,7 +38,7 @@ export default function ActivityLogs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {logs.map((log) => (
+              {list.map((log) => (
                 <tr key={log.id} className="transition-colors hover:bg-zinc-800/40">
                   <td className="py-2.5 pr-4 whitespace-nowrap font-mono text-[11px] text-zinc-400">
                     {new Date(log.created_at).toLocaleTimeString()}

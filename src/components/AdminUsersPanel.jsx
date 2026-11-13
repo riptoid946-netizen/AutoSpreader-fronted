@@ -5,6 +5,7 @@ import {
   adminUpdateUser,
   adminDeleteUser,
 } from '../services/api';
+import { smartPoll } from '../services/smartPoll';
 
 function formatValidity(expiresAt, role) {
   if (role === 'admin' || !expiresAt) {
@@ -40,9 +41,7 @@ export default function AdminUsersPanel() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    loadUsers();
-    const interval = setInterval(loadUsers, 6000);
-    return () => clearInterval(interval);
+    return smartPoll(loadUsers, 6000);
   }, []);
 
   async function loadUsers() {

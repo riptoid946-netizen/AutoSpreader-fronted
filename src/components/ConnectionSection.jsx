@@ -5,21 +5,18 @@ import {
   connectAccount,
   getActiveAccountId,
 } from '../services/api';
+import { smartPoll } from '../services/smartPoll';
 
 export default function ConnectionSection() {
   const [status, setStatus] = useState({ connected: false, initializing: false, qrCode: null, qrVersion: 0, clientInfo: null });
   const [loading, setLoading] = useState(false);
   const qrVersionRef = useRef(null);
 
-  useEffect(() => {
-    loadStatus();
-  }, []);
-
-  // Poll faster (1s) while launching browser or syncing after QR scan
+  // Poll faster (1s) while launching browser or syncing after QR scan; 3s otherwise.
+  // smartPoll skips ticks while the tab is hidden and refreshes on return.
   const fastPoll = Boolean((status.initializing || status.authenticating) && !status.connected);
   useEffect(() => {
-    const id = setInterval(loadStatus, fastPoll ? 1000 : 3000);
-    return () => clearInterval(id);
+    return smartPoll(loadStatus, fastPoll ? 1000 : 3000);
   }, [fastPoll]);
 
   async function loadStatus() {
