@@ -453,7 +453,7 @@ export default function Dashboard() {
               {/* Right Column: Live Messages Inbox + Activity Logs */}
               <div className="lg:col-span-7 space-y-5">
                 <MessagesList messages={snap?.messages} onRefresh={loadSnapshot} />
-                <ActivityLogs logs={snap?.logs} />
+                <ActivityLogs logs={snap?.logs} onRefresh={loadSnapshot} />
               </div>
             </div>
           )}

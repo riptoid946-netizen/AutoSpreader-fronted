@@ -225,6 +225,10 @@ export async function clearMessages() {
   return apiFetch('/messages/clear', { method: 'POST' });
 }
 
+export async function clearLogs() {
+  return apiFetch('/logs/clear', { method: 'POST' });
+}
+
 export async function getWhatsAppStatus(qrVersion = null) {
   const query = qrVersion !== null && qrVersion !== undefined
     ? `?qrVersion=${encodeURIComponent(qrVersion)}`

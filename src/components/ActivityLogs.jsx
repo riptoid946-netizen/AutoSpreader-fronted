@@ -1,8 +1,27 @@
+import { useState } from 'react';
+import { clearLogs } from '../services/api';
+
 // Props-driven: logs arrive from the dashboard snapshot poll (Dashboard.jsx),
-// so this component runs no polling loop of its own.
-export default function ActivityLogs({ logs }) {
+// so this component runs no polling loop of its own. onRefresh re-pulls the
+// snapshot after a mutation (Clear).
+export default function ActivityLogs({ logs, onRefresh }) {
   const list = Array.isArray(logs) ? logs : [];
   const loading = logs == null; // snapshot hasn't arrived yet
+  const [clearing, setClearing] = useState(false);
+
+  async function handleClear() {
+    if (window.confirm('Clear the activity log? Old entries will be removed.')) {
+      setClearing(true);
+      try {
+        await clearLogs();
+        if (onRefresh) await onRefresh();
+      } catch (err) {
+        alert('Failed to clear: ' + err.message);
+      } finally {
+        setClearing(false);
+      }
+    }
+  }
 
   const levelColor = (level) => {
     switch (level) {
@@ -16,7 +35,20 @@ export default function ActivityLogs({ logs }) {
     <section className="panel" aria-labelledby="logs-heading">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 id="logs-heading" className="panel-title">Activity Logs</h2>
-        <span className="text-[11px] text-zinc-400">Last 30 entries</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-zinc-400">Last 30 entries</span>
+          {list.length > 0 && (
+            <button
+              onClick={handleClear}
+              disabled={clearing}
+              aria-label="Clear activity log"
+              className="rounded-md px-2 py-1 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-50"
+              title="Clear activity log"
+            >
+              {clearing ? 'Clearing…' : 'Clear'}
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
