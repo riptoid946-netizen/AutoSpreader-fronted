@@ -13,6 +13,8 @@ export default function MediaAttachmentPicker({
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [fileError, setFileError] = useState(null);
   const [voiceError, setVoiceError] = useState(null);
+  const [fileWarning, setFileWarning] = useState(null);
+  const [voiceWarning, setVoiceWarning] = useState(null);
 
   const fileInputRef = useRef(null);
   const voiceInputRef = useRef(null);
@@ -23,9 +25,15 @@ export default function MediaAttachmentPicker({
 
     setUploadingFile(true);
     setFileError(null);
+    setFileWarning(null);
     try {
       const res = await uploadMedia(file);
       onFileChange(res.filePath, res.fileName);
+      if (res.persisted === false) {
+        setFileWarning(
+          `Uploaded, but the cloud backup failed (${res.persistWarning || 'unknown reason'}). This file will be lost on the next backend deploy — try uploading again.`
+        );
+      }
     } catch (err) {
       setFileError('File upload failed: ' + err.message);
     } finally {
@@ -40,9 +48,15 @@ export default function MediaAttachmentPicker({
 
     setUploadingVoice(true);
     setVoiceError(null);
+    setVoiceWarning(null);
     try {
       const res = await uploadMedia(file);
       onVoiceChange(res.filePath, res.fileName);
+      if (res.persisted === false) {
+        setVoiceWarning(
+          `Uploaded, but the cloud backup failed (${res.persistWarning || 'unknown reason'}). This file will be lost on the next backend deploy — try uploading again.`
+        );
+      }
     } catch (err) {
       setVoiceError('Voice note upload failed: ' + err.message);
     } finally {
@@ -108,6 +122,7 @@ export default function MediaAttachmentPicker({
             </div>
           )}
           {fileError && <p className="mt-1 text-[11px] font-medium text-red-400">{fileError}</p>}
+          {fileWarning && <p className="mt-1 text-[11px] font-medium text-amber-400">{fileWarning}</p>}
         </div>
 
         {/* Voice Note Upload */}
@@ -158,6 +173,7 @@ export default function MediaAttachmentPicker({
             </div>
           )}
           {voiceError && <p className="mt-1 text-[11px] font-medium text-red-400">{voiceError}</p>}
+          {voiceWarning && <p className="mt-1 text-[11px] font-medium text-amber-400">{voiceWarning}</p>}
         </div>
       </div>
     </div>
