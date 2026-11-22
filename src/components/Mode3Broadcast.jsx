@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { startMode3, stopBulk, getBulkStatus, getWhatsAppChats } from '../services/api';
+import { startMode3, stopBulk, getBulkStatus, getWhatsAppChats, resumeBulk } from '../services/api';
 import { smartPoll } from '../services/smartPoll';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
@@ -19,6 +19,7 @@ export default function Mode3Broadcast() {
   const [bulkStatus, setBulkStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
     fetchChats();
@@ -103,6 +104,27 @@ export default function Mode3Broadcast() {
     }
   }
 
+  // Resume a paused/interrupted campaign — continues ONLY unsent recipients, no duplicates
+  async function handleResume() {
+    const c = bulkStatus?.resumable;
+    if (!c) return;
+    setResuming(true);
+    setError(null);
+    try {
+      const res = await resumeBulk(c.campaignId);
+      if (res.resumed) {
+        // keep the chat count fresh; resume continues server-side
+        await checkStatus();
+      } else {
+        setError(res.reason || 'Nothing to resume.');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResuming(false);
+    }
+  }
+
   return (
     <section className="panel" aria-labelledby="mode3-heading">
       <div className="flex items-center justify-between gap-3 mb-1">
@@ -153,6 +175,30 @@ export default function Mode3Broadcast() {
                 Stop broadcast
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Resumable campaign — continue unsent recipients instead of re-running the whole broadcast */}
+      {!bulkStatus?.running && bulkStatus?.resumable && bulkStatus.resumable.pending > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-700/40 bg-amber-700/10 px-3.5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-amber-200">
+                ⏸ Broadcast #{bulkStatus.resumable.campaignId} {bulkStatus.resumable.status} — {bulkStatus.resumable.pending} chat{bulkStatus.resumable.pending === 1 ? '' : 's'} remaining
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">
+                Resume continues only unsent recipients — nobody who already received it gets a duplicate.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleResume}
+              disabled={resuming}
+              className="shrink-0 rounded-md border border-amber-700/60 bg-amber-700/20 px-3 py-1.5 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-700/30 disabled:opacity-50"
+            >
+              {resuming ? 'Resuming…' : '▶ Resume'}
+            </button>
           </div>
         </div>
       )}

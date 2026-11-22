@@ -313,3 +313,12 @@ export async function getBulkStatus() {
 export async function stopBulk() {
   return apiFetch('/bulk/stop', { method: 'POST' });
 }
+
+// Resume an interrupted/paused campaign — continues only pending items
+export async function resumeBulk(campaignId) {
+  return apiFetch('/bulk/resume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(campaignId ? { campaignId } : {}),
+  });
+}

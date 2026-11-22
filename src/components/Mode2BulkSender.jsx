@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { startMode2, stopBulk, getBulkStatus } from '../services/api';
+import { startMode2, stopBulk, getBulkStatus, resumeBulk } from '../services/api';
 import { smartPoll } from '../services/smartPoll';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
@@ -18,6 +18,7 @@ export default function Mode2BulkSender() {
   const [error, setError] = useState(null);
   const [startedInfo, setStartedInfo] = useState(null);
   const [coldConfirm, setColdConfirm] = useState(null);
+  const [resuming, setResuming] = useState(false);
   // Synchronous guard: blocks a second submit before React re-renders the disabled button
   const submittingRef = useRef(false);
   const infoTimerRef = useRef(null);
@@ -151,6 +152,27 @@ export default function Mode2BulkSender() {
     }
   }
 
+  // Resume a paused/interrupted campaign — continues ONLY unsent recipients, no duplicates
+  async function handleResume() {
+    const c = bulkStatus?.resumable;
+    if (!c) return;
+    setResuming(true);
+    setError(null);
+    try {
+      const res = await resumeBulk(c.campaignId);
+      if (res.resumed) {
+        showInfo(`▶ Campaign #${res.campaignId} resumed — ${res.total} recipient(s) left to send.`);
+      } else {
+        showInfo(res.reason || 'Nothing to resume.');
+      }
+      await checkStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResuming(false);
+    }
+  }
+
   return (
     <section className="panel" aria-labelledby="mode2-heading">
       <div className="flex items-center justify-between gap-3 mb-1">
@@ -244,6 +266,30 @@ export default function Mode2BulkSender() {
                 Stop sending
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Resumable campaign — continue unsent recipients instead of re-running the whole list */}
+      {!bulkStatus?.running && bulkStatus?.resumable && bulkStatus.resumable.pending > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-700/40 bg-amber-700/10 px-3.5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-amber-200">
+                ⏸ Campaign #{bulkStatus.resumable.campaignId} {bulkStatus.resumable.status} — {bulkStatus.resumable.pending} recipient{bulkStatus.resumable.pending === 1 ? '' : 's'} remaining
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">
+                Resume continues only unsent recipients — nobody who already received it gets a duplicate.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleResume}
+              disabled={resuming}
+              className="shrink-0 rounded-md border border-amber-700/60 bg-amber-700/20 px-3 py-1.5 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-700/30 disabled:opacity-50"
+            >
+              {resuming ? 'Resuming…' : '▶ Resume'}
+            </button>
           </div>
         </div>
       )}
