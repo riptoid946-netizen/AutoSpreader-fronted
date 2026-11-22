@@ -5,6 +5,7 @@ import {
   startAutomation,
   stopAutomation,
   getAutomationStatus,
+  resetUnreadCatchup,
 } from '../services/api';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
@@ -35,6 +36,7 @@ export default function AutomationSettings() {
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [resetDone, setResetDone] = useState(null);
 
   useEffect(() => {
     loadConfig();
@@ -141,6 +143,31 @@ export default function AutomationSettings() {
     }
   }
 
+  // Reset the unread catch-up backlog: queued OLD replies are cancelled and the
+  // scan ignores pre-reset unread chats (fresh start — e.g. before ad campaigns).
+  async function handleResetCatchup() {
+    if (
+      !window.confirm(
+        'Clear the unread backlog?\n\nCancels all auto-replies already queued from old unread chats, and the scan will only pick up messages arriving from now on.\n\nLive chats and new messages stay unaffected. Continue?'
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setResetDone(null);
+    try {
+      const res = await resetUnreadCatchup();
+      setResetDone(
+        `🧹 Backlog cleared — ${res.cleared ?? 0} queued reply(ies) cancelled. Catch-up now covers only new messages.`
+      );
+      setTimeout(() => setResetDone(null), 9000);
+    } catch (err) {
+      alert('Reset failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="panel" aria-labelledby="mode1-heading">
       <div className="flex items-center justify-between gap-3 mb-1">
@@ -238,7 +265,7 @@ export default function AutomationSettings() {
         {saved && <p className="text-xs text-emerald-500 text-center font-medium">Settings saved successfully</p>}
       </form>
 
-      <div className="mt-5 border-t border-zinc-800 pt-4">
+      <div className="mt-5 border-t border-zinc-800 pt-4 space-y-2.5">
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={handleStart}
@@ -254,6 +281,23 @@ export default function AutomationSettings() {
           >
             {loading ? 'Stopping…' : 'Stop Auto-Reply'}
           </button>
+        </div>
+
+        {/* Backlog reset — fresh start before ads: catch-up covers only NEW messages */}
+        <div>
+          <button
+            onClick={handleResetCatchup}
+            disabled={loading}
+            className="w-full rounded-md border border-amber-700/50 bg-amber-700/10 px-3 py-2 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-700/20 disabled:opacity-50"
+          >
+            🧹 Reset unread backlog & blank catch-up (0 contacts)
+          </button>
+          <p className="hint mt-1.5 text-center">
+            Link hone se pehle ke saare purane unread chats ignore honge — sirf ab ke baad aane wale messages par reply jaayegi.
+          </p>
+          {resetDone && (
+            <p className="text-xs text-amber-300 text-center font-medium mt-1.5">{resetDone}</p>
+          )}
         </div>
       </div>
     </section>

@@ -262,6 +262,12 @@ export async function getAutomationStatus() {
   return apiFetch('/automation/status');
 }
 
+// Reset the unread catch-up backlog: pin the scan watermark to NOW and cancel
+// all queued (pending) auto-replies created from pre-link backlog.
+export async function resetUnreadCatchup() {
+  return apiFetch('/automation/catchup/reset', { method: 'POST' });
+}
+
 export async function uploadMedia(file) {
   const formData = new FormData();
   formData.append('file', file);
