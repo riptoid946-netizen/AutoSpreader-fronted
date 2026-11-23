@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { startMode2, stopBulk, getBulkStatus, resumeBulk } from '../services/api';
+import { startMode2, stopBulk, getBulkStatus, resumeBulk, downloadUnrepliedNumbers } from '../services/api';
 import { smartPoll } from '../services/smartPoll';
 import MediaAttachmentPicker from './MediaAttachmentPicker';
 import MultiMessageEditor from './MultiMessageEditor';
@@ -19,6 +19,7 @@ export default function Mode2BulkSender() {
   const [startedInfo, setStartedInfo] = useState(null);
   const [coldConfirm, setColdConfirm] = useState(null);
   const [resuming, setResuming] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
   // Synchronous guard: blocks a second submit before React re-renders the disabled button
   const submittingRef = useRef(false);
   const infoTimerRef = useRef(null);
@@ -173,6 +174,16 @@ export default function Mode2BulkSender() {
     }
   }
 
+  // Download a .txt of unreplied inbound numbers (own customers)
+  async function handleExportUnreplied() {
+    setDownloadError(null);
+    try {
+      await downloadUnrepliedNumbers();
+    } catch (err) {
+      setDownloadError(err.message || 'Download failed');
+    }
+  }
+
   return (
     <section className="panel" aria-labelledby="mode2-heading">
       <div className="flex items-center justify-between gap-3 mb-1">
@@ -304,7 +315,17 @@ export default function Mode2BulkSender() {
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <label className="label mb-0">Phone numbers list</label>
-            <span className="chip chip-info">{uniqueCount} valid numbers</span>
+            <div className="flex items-center gap-2">
+              <span className="chip chip-info">{uniqueCount} valid numbers</span>
+              <button
+                type="button"
+                onClick={handleExportUnreplied}
+                className="rounded-md border border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:border-emerald-600/60 hover:text-emerald-300"
+                title="Download a .txt of contacts who messaged but were never auto-replied — your own unworked leads."
+              >
+                ↓ Export unreplied
+              </button>
+            </div>
           </div>
           <textarea
             value={numbersText}
@@ -319,6 +340,9 @@ export default function Mode2BulkSender() {
           />
           <p className="hint">
             Tip: You can include country code (e.g. 91). 10-digit Indian numbers auto-prepend 91.
+            {downloadError && (
+              <span className="block text-red-400 mt-1">{downloadError}</span>
+            )}
           </p>
         </div>
 

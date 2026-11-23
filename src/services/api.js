@@ -316,6 +316,25 @@ export async function getBulkStatus() {
   return apiFetch('/bulk/status');
 }
 
+export async function downloadUnrepliedNumbers() {
+  const res = await fetch(`${BASE_URL}/export/unreplied-numbers`, {
+    headers: getHeaders({}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err && err.error) || `Download failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'unreplied-numbers.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function stopBulk() {
   return apiFetch('/bulk/stop', { method: 'POST' });
 }
